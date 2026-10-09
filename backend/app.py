@@ -7,9 +7,14 @@ Authors: Sritosh Rath (24BDS0001), Jayant Sharma (24BAI0148)
 import os
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-from db import init_db, query_all, query_one, execute_write, execute_raw_user_query
 
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'frontend')
+try:
+    from db import init_db, query_all, query_one, execute_write, execute_raw_user_query
+except ImportError:
+    from backend.db import init_db, query_all, query_one, execute_write, execute_raw_user_query
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
 
 app = Flask(__name__, static_folder=FRONTEND_DIR)
 CORS(app)

@@ -6,10 +6,18 @@ Supports SQLite out-of-the-box with auto-initialization and MySQL compatibility.
 import os
 import sqlite3
 import datetime
+import shutil
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'campus_lost_found.db')
-SCHEMA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'schema.sql')
-SAMPLE_DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'sample_data.sql')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCHEMA_PATH = os.path.join(BASE_DIR, 'database', 'schema.sql')
+SAMPLE_DATA_PATH = os.path.join(BASE_DIR, 'database', 'sample_data.sql')
+SOURCE_DB_PATH = os.path.join(BASE_DIR, 'database', 'campus_lost_found.db')
+
+# In Vercel serverless environment, use /tmp for write access
+if os.environ.get('VERCEL') or os.environ.get('AWS_LAMBDA_FUNCTION_NAME') or (os.name != 'nt' and not os.access(BASE_DIR, os.W_OK)):
+    DB_PATH = '/tmp/campus_lost_found.db'
+else:
+    DB_PATH = SOURCE_DB_PATH
 
 
 def get_db_connection():
@@ -26,6 +34,15 @@ def init_db(force_reinit=False):
     """Initializes the database schema and sample data if not already created."""
     db_exists = os.path.exists(DB_PATH)
     if not db_exists or force_reinit:
+        # If in /tmp and pre-seeded database exists in repo, copy it for instant start
+        if DB_PATH != SOURCE_DB_PATH and os.path.exists(SOURCE_DB_PATH) and not force_reinit:
+            try:
+                os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+                shutil.copyfile(SOURCE_DB_PATH, DB_PATH)
+                return True
+            except Exception:
+                pass
+
         if os.path.exists(DB_PATH) and force_reinit:
             try:
                 os.remove(DB_PATH)
@@ -36,15 +53,16 @@ def init_db(force_reinit=False):
         cursor = conn.cursor()
 
         # Read and run schema
-        with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
-            schema_sql = f.read()
-            # Clean comments and execute script
-            cursor.executescript(schema_sql)
+        if os.path.exists(SCHEMA_PATH):
+            with open(SCHEMA_PATH, 'r', encoding='utf-8') as f:
+                schema_sql = f.read()
+                cursor.executescript(schema_sql)
 
         # Read and run sample data
-        with open(SAMPLE_DATA_PATH, 'r', encoding='utf-8') as f:
-            sample_sql = f.read()
-            cursor.executescript(sample_sql)
+        if os.path.exists(SAMPLE_DATA_PATH):
+            with open(SAMPLE_DATA_PATH, 'r', encoding='utf-8') as f:
+                sample_sql = f.read()
+                cursor.executescript(sample_sql)
 
         conn.commit()
         conn.close()
