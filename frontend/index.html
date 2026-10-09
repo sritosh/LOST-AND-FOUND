@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Lost & Found System | DBMS Lab Project (Review 1 - 50%)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-brand">
+            <div class="brand-logo">
+                <i data-lucide="compass"></i>
+            </div>
+            <div class="brand-text">
+                <h1>Campus Lost & Found</h1>
+                <p class="brand-subtitle">DBMS Lab Project • 50% Milestone Review</p>
+            </div>
+        </div>
+
+        <div class="nav-team-badge">
+            <div class="team-tag">
+                <i data-lucide="users"></i>
+                <span>Team: <strong>Sritosh Rath</strong> (24BDS0001) & <strong>Jayant Sharma</strong> (24BAI0148)</span>
+            </div>
+            <div class="db-badge">
+                <span class="pulse-dot"></span>
+                <span>RDBMS: SQLite / MySQL 8.0</span>
+            </div>
+        </div>
+
+        <div class="nav-actions">
+            <button class="btn btn-outline-sm" id="btn-reset-db" title="Reset sample database to fresh state">
+                <i data-lucide="rotate-ccw"></i> Reset DB
+            </button>
+            <button class="btn btn-secondary-sm" onclick="openModal('modal-report-lost')">
+                <i data-lucide="search"></i> Report Lost
+            </button>
+            <button class="btn btn-primary-sm" onclick="openModal('modal-report-found')">
+                <i data-lucide="plus-circle"></i> Report Found
+            </button>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <nav class="sidebar-menu">
+                <button class="nav-tab active" data-tab="dashboard">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-tab" data-tab="lost-items">
+                    <i data-lucide="help-circle"></i>
+                    <span>Lost Items</span>
+                    <span class="tab-badge" id="badge-lost-count">0</span>
+                </button>
+                <button class="nav-tab" data-tab="found-items">
+                    <i data-lucide="package-check"></i>
+                    <span>Found Items</span>
+                    <span class="tab-badge" id="badge-found-count">0</span>
+                </button>
+                <button class="nav-tab" data-tab="claims">
+                    <i data-lucide="check-check"></i>
+                    <span>Claims & Returns</span>
+                    <span class="tab-badge warning" id="badge-claim-count">0</span>
+                </button>
+                <button class="nav-tab" data-tab="students">
+                    <i data-lucide="graduation-cap"></i>
+                    <span>Student Directory</span>
+                </button>
+                <div class="menu-divider"></div>
+                <div class="menu-label">DBMS Lab Review Hub</div>
+                <button class="nav-tab special-tab" data-tab="sql-lab">
+                    <i data-lucide="terminal"></i>
+                    <span>SQL Query Lab & DB</span>
+                </button>
+                <button class="nav-tab special-tab" data-tab="review-doc">
+                    <i data-lucide="file-text"></i>
+                    <span>Review 1 Report & ERD</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="db-status-box">
+                    <div class="status-header">
+                        <span class="status-indicator online"></span>
+                        <span class="status-title">Database Connected</span>
+                    </div>
+                    <div class="status-details">
+                        <small>6 Tables • Relational 3NF Schema</small>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+
+            <!-- 1. DASHBOARD TAB -->
+            <section id="tab-dashboard" class="tab-pane active">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Executive Dashboard</h2>
+                        <p class="page-desc">Real-time statistics & campus lost and found activity stream</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-secondary" onclick="loadDashboardStats()">
+                            <i data-lucide="refresh-cw"></i> Refresh Data
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Metric Cards Grid -->
+                <div class="kpi-grid">
+                    <div class="kpi-card danger-card">
+                        <div class="kpi-icon"><i data-lucide="search-x"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Active Lost Items</span>
+                            <h3 class="kpi-value" id="kpi-lost-pending">0</h3>
+                            <span class="kpi-subtext" id="kpi-lost-total">0 total reported</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card success-card">
+                        <div class="kpi-icon"><i data-lucide="package-search"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Found Items In Custody</span>
+                            <h3 class="kpi-value" id="kpi-found-pending">0</h3>
+                            <span class="kpi-subtext" id="kpi-found-total">0 total recorded</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card warning-card">
+                        <div class="kpi-icon"><i data-lucide="file-question"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Pending Claims</span>
+                            <h3 class="kpi-value" id="kpi-claims-pending">0</h3>
+                            <span class="kpi-subtext">Awaiting verification</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card primary-card">
+                        <div class="kpi-icon"><i data-lucide="undo-2"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Items Returned</span>
+                            <h3 class="kpi-value" id="kpi-total-returns">0</h3>
+                            <span class="kpi-subtext">Successfully settled</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard 2-Column Grid -->
+                <div class="dash-columns">
+                    <!-- Left: Category Distribution & Quick Actions -->
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <h3><i data-lucide="pie-chart"></i> Item Distribution by Category</h3>
+                        </div>
+                        <div class="dash-card-body" id="category-distribution-list">
+                            <!-- Populated dynamically -->
+                            <div class="skeleton-loader"></div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Recent Activity Stream -->
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <h3><i data-lucide="activity"></i> Recent Campus Activity</h3>
+                        </div>
+                        <div class="dash-card-body" id="recent-activities-list">
+                            <!-- Populated dynamically -->
+                            <div class="skeleton-loader"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Action Callouts -->
+                <div class="quick-action-banner">
+                    <div class="banner-text">
+                        <h4>DBMS Project Review 1 Scope (50% Milestone)</h4>
+                        <p>Complete Relational Schema, Normalization to 3NF, Full DDL/DML, REST API, Search/Filter catalog, Claiming workflow, and Live SQL Query Lab.</p>
+                    </div>
+                    <div class="banner-buttons">
+                        <button class="btn btn-outline" onclick="switchTab('sql-lab')">
+                            <i data-lucide="terminal"></i> Test SQL Queries
+                        </button>
+                        <button class="btn btn-primary" onclick="switchTab('review-doc')">
+                            <i data-lucide="book-open"></i> View Review Report
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. LOST ITEMS CATALOG TAB -->
+            <section id="tab-lost-items" class="tab-pane">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Lost Items Catalog</h2>
+                        <p class="page-desc">Browse and track all items reported lost by students</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="openModal('modal-report-lost')">
+                            <i data-lucide="plus"></i> Report Lost Item
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search & Filters Toolbar -->
+                <div class="filter-toolbar">
+                    <div class="search-box">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="lost-search-input" placeholder="Search by item name, description, location, or student..." oninput="debounce(loadLostItems, 300)()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="lost-category-filter" onchange="loadLostItems()">
+                            <option value="All">All Categories</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Documents / Cards">Documents / Cards</option>
+                            <option value="Stationery / Academic">Stationery / Academic</option>
+                            <option value="Accessories">Accessories</option>
+                            <option value="Personal Belongings">Personal Belongings</option>
+                            <option value="Keys / Cards">Keys / Cards</option>
+                            <option value="Books / Notes">Books / Notes</option>
+                        </select>
+                        <select id="lost-status-filter" onchange="loadLostItems()">
+                            <option value="All">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Claimed">Claimed</option>
+                            <option value="Returned">Returned</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Lost Items Grid / Container -->
+                <div id="lost-items-container" class="cards-grid">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+
+            <!-- 3. FOUND ITEMS CATALOG TAB -->
+            <section id="tab-found-items" class="tab-pane">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Found Items Inventory</h2>
+                        <p class="page-desc">Items recovered across campus and held for verification</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="openModal('modal-report-found')">
+                            <i data-lucide="plus"></i> Report Found Item
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search & Filters Toolbar -->
+                <div class="filter-toolbar">
+                    <div class="search-box">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="found-search-input" placeholder="Search found items by keyword, location, finder..." oninput="debounce(loadFoundItems, 300)()">
+                    </div>
+                    <div class="filter-group">
+                        <select id="found-category-filter" onchange="loadFoundItems()">
+                            <option value="All">All Categories</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Documents / Cards">Documents / Cards</option>
+                            <option value="Stationery / Academic">Stationery / Academic</option>
+                            <option value="Accessories">Accessories</option>
+                            <option value="Personal Belongings">Personal Belongings</option>
+                            <option value="Keys / Cards">Keys / Cards</option>
+                            <option value="Books / Notes">Books / Notes</option>
+                        </select>
+                        <select id="found-status-filter" onchange="loadFoundItems()">
+                            <option value="All">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Claimed">Claimed</option>
+                            <option value="Returned">Returned</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Found Items Grid -->
+                <div id="found-items-container" class="cards-grid">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+
+            <!-- 4. CLAIMS & RETURNS WORKFLOW TAB -->
+            <section id="tab-claims" class="tab-pane">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Claims & Return Settlement</h2>
+                        <p class="page-desc">Review student ownership claims and authorize item handovers</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="openModal('modal-process-return')">
+                            <i data-lucide="handshake"></i> Record Item Return
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Claims Table Section -->
+                <div class="content-box">
+                    <div class="content-box-header">
+                        <h3><i data-lucide="shield-check"></i> Active Claims List</h3>
+                        <span class="badge badge-info" id="claims-count-badge">0 claims</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="claims-table">
+                            <thead>
+                                <tr>
+                                    <th>Claim ID</th>
+                                    <th>Item Details</th>
+                                    <th>Claimant Student</th>
+                                    <th>Claim Date</th>
+                                    <th>Proof Provided</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="claims-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Returns History Section -->
+                <div class="content-box mt-4">
+                    <div class="content-box-header">
+                        <h3><i data-lucide="check-circle-2"></i> Final Return Settlement Records</h3>
+                        <span class="badge badge-success" id="returns-count-badge">0 returns</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="returns-table">
+                            <thead>
+                                <tr>
+                                    <th>Return ID</th>
+                                    <th>Item Returned</th>
+                                    <th>Received By (Student)</th>
+                                    <th>Return Date</th>
+                                    <th>Verified By Officer</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody id="returns-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. STUDENT DIRECTORY TAB -->
+            <section id="tab-students" class="tab-pane">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Student Directory</h2>
+                        <p class="page-desc">Registered students and their associated lost & found records</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" onclick="openModal('modal-add-student')">
+                            <i data-lucide="user-plus"></i> Register Student
+                        </button>
+                    </div>
+                </div>
+
+                <div class="content-box">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Reg. Number</th>
+                                    <th>Student Name</th>
+                                    <th>Department</th>
+                                    <th>Contact Email</th>
+                                    <th>Phone</th>
+                                    <th>Lost Reported</th>
+                                    <th>Found Reported</th>
+                                    <th>Claims</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="students-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. SQL QUERY LAB & SCHEMA EXPLORER TAB -->
+            <section id="tab-sql-lab" class="tab-pane">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Interactive SQL Query Lab</h2>
+                        <p class="page-desc">Live DBMS query console and schema inspector for lab review demonstration</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-outline" onclick="loadSchemaInfo()">
+                            <i data-lucide="database"></i> Inspect Schema
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Query Pre-sets and Editor -->
+                <div class="sql-lab-layout">
+                    <div class="sql-editor-box">
+                        <div class="sql-presets-bar">
+                            <label for="query-preset-select"><i data-lucide="sparkles"></i> Preset Review Queries:</label>
+                            <select id="query-preset-select" onchange="applyPresetQuery(this.value)">
+                                <option value="">-- Choose a standard DBMS Review Query --</option>
+                                <option value="Q1">Q1: Simple SELECT - All Registered Students</option>
+                                <option value="Q2">Q2: JOIN - Active Lost Items with Student Details</option>
+                                <option value="Q3">Q3: JOIN - Found Items with Finder & Storage Location</option>
+                                <option value="Q4">Q4: JOIN - All Claims with Claimant Profile</option>
+                                <option value="Q5">Q5: LEFT JOIN - Items without any claims</option>
+                                <option value="Q6">Q6: GROUP BY - Item Count by Category</option>
+                                <option value="Q7">Q7: GROUP BY + HAVING - Items Reported per Department</option>
+                                <option value="Q8">Q8: SUBQUERY - Students reporting both Lost & Found</option>
+                                <option value="Q9">Q9: VIEW - Querying 'vw_lost_items_detailed'</option>
+                                <option value="Q10">Q10: VIEW - Querying 'vw_claims_overview'</option>
+                            </select>
+                        </div>
+
+                        <div class="editor-wrapper">
+                            <textarea id="sql-query-input" rows="5" spellcheck="false" placeholder="Enter any valid SQL query here (e.g. SELECT * FROM STUDENT JOIN LOST_ITEM ON STUDENT.student_id = LOST_ITEM.student_id)..."></textarea>
+                        </div>
+
+                        <div class="sql-editor-actions">
+                            <button class="btn btn-primary" id="btn-run-query" onclick="executeUserQuery()">
+                                <i data-lucide="play"></i> Run Query (Execute SQL)
+                            </button>
+                            <button class="btn btn-outline" onclick="clearQueryEditor()">
+                                <i data-lucide="trash-2"></i> Clear
+                            </button>
+                            <span class="query-stats-pill" id="query-stats-pill">Ready</span>
+                        </div>
+                    </div>
+
+                    <!-- SQL Results View -->
+                    <div class="sql-result-box">
+                        <div class="result-header">
+                            <h4><i data-lucide="table"></i> Query Execution Results</h4>
+                            <span id="result-meta"></span>
+                        </div>
+                        <div class="table-responsive sql-result-table-wrap" id="sql-result-wrap">
+                            <p class="empty-state-text">Execute a query above to see live database results.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Database Schema Explorer -->
+                <div class="content-box mt-4">
+                    <div class="content-box-header">
+                        <h3><i data-lucide="layers"></i> Live Database Schema & Table Dictionary</h3>
+                        <small class="text-muted">Extracted live from RDBMS metadata</small>
+                    </div>
+                    <div class="schema-grid" id="schema-explorer-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. REVIEW 1 PRESENTATION & ER DIAGRAM TAB -->
+            <section id="tab-review-doc" class="tab-pane">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Review 1 Presentation & Documentation</h2>
+                        <p class="page-desc">Comprehensive project overview, ER Diagram, 3NF Normalization, and Viva answers</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-outline" onclick="window.print()">
+                            <i data-lucide="printer"></i> Print / Export Report
+                        </button>
+                    </div>
+                </div>
+
+                <div class="doc-container">
+                    <!-- Project Info Header -->
+                    <div class="doc-card">
+                        <div class="doc-header-block">
+                            <span class="doc-tag">DBMS Lab Course Project • 50% Review</span>
+                            <h2>Campus Lost & Found System</h2>
+                            <p class="lead">A centralized relational database management system for recording, tracking, claiming, and returning lost articles inside the university campus.</p>
+                            
+                            <div class="team-grid">
+                                <div class="team-member-card">
+                                    <div class="avatar">SR</div>
+                                    <div>
+                                        <strong>SRITOSH RATH</strong>
+                                        <p>Registration No: <code>24BDS0001</code></p>
+                                        <small>B.Tech Data Science</small>
+                                    </div>
+                                </div>
+                                <div class="team-member-card">
+                                    <div class="avatar">JS</div>
+                                    <div>
+                                        <strong>JAYANT SHARMA</strong>
+                                        <p>Registration No: <code>24BAI0148</code></p>
+                                        <small>B.Tech Artificial Intelligence</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Milestone 1 Status -->
+                    <div class="doc-card">
+                        <h3><i data-lucide="check-circle"></i> Review 1 (50% Milestone) Progress Checklist</h3>
+                        <div class="milestone-grid">
+                            <div class="milestone-item completed">
+                                <div class="check-icon"><i data-lucide="check"></i></div>
+                                <div>
+                                    <strong>Complete Database Schema (DDL)</strong>
+                                    <p>6 Relational tables created with PK, FK cascading rules, CHECK constraints, and indexes.</p>
+                                </div>
+                            </div>
+                            <div class="milestone-item completed">
+                                <div class="check-icon"><i data-lucide="check"></i></div>
+                                <div>
+                                    <strong>Normalization (1NF, 2NF, 3NF)</strong>
+                                    <p>Formal justification ensuring 0 partial and 0 transitive functional dependencies.</p>
+                                </div>
+                            </div>
+                            <div class="milestone-item completed">
+                                <div class="check-icon"><i data-lucide="check"></i></div>
+                                <div>
+                                    <strong>DML & Realistic Sample Data</strong>
+                                    <p>Populated with campus students, realistic item categories, claims, and returns.</p>
+                                </div>
+                            </div>
+                            <div class="milestone-item completed">
+                                <div class="check-icon"><i data-lucide="check"></i></div>
+                                <div>
+                                    <strong>CRUD & Core Operations REST API</strong>
+                                    <p>Working endpoints for reporting lost/found items, searching, claiming, and return processing.</p>
+                                </div>
+                            </div>
+                            <div class="milestone-item completed">
+                                <div class="check-icon"><i data-lucide="check"></i></div>
+                                <div>
+                                    <strong>Interactive User Interface & SQL Lab</strong>
+                                    <p>Live single-page application with real-time filters and custom SQL query runner.</p>
+                                </div>
+                            </div>
+                            <div class="milestone-item planned">
+                                <div class="check-icon"><i data-lucide="clock"></i></div>
+                                <div>
+                                    <strong>Review 2 (Final 50% Scope)</strong>
+                                    <p>Image uploads for items, email notification triggers, automated matching algorithms, and role-based student auth.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ER Diagram Visualizer -->
+                    <div class="doc-card">
+                        <h3><i data-lucide="git-branch"></i> Entity-Relationship (ER) Architecture</h3>
+                        <div class="er-diagram-box">
+                            <div class="mermaid-diagram-code">
+                                <div class="er-visual-container">
+                                    <div class="er-node" style="top: 20px; left: 50px;">
+                                        <div class="er-node-header">STUDENT</div>
+                                        <div class="er-node-body">
+                                            <span class="pk">PK: student_id</span>
+                                            <span>name</span>
+                                            <span>email (UQ)</span>
+                                            <span>phone</span>
+                                            <span>department</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="er-node" style="top: 20px; right: 50px;">
+                                        <div class="er-node-header">ITEM</div>
+                                        <div class="er-node-body">
+                                            <span class="pk">PK: item_id</span>
+                                            <span>item_name</span>
+                                            <span>category</span>
+                                            <span>description</span>
+                                            <span>location</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="er-node" style="top: 220px; left: 30px;">
+                                        <div class="er-node-header">LOST_ITEM</div>
+                                        <div class="er-node-body">
+                                            <span class="pk">PK: lost_id</span>
+                                            <span class="fk">FK: student_id</span>
+                                            <span class="fk">FK: item_id</span>
+                                            <span>date_lost</span>
+                                            <span>status</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="er-node" style="top: 220px; left: 260px;">
+                                        <div class="er-node-header">FOUND_ITEM</div>
+                                        <div class="er-node-body">
+                                            <span class="pk">PK: found_id</span>
+                                            <span class="fk">FK: student_id</span>
+                                            <span class="fk">FK: item_id</span>
+                                            <span>date_found</span>
+                                            <span>status</span>
+                                            <span>storage_location</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="er-node" style="top: 220px; right: 260px;">
+                                        <div class="er-node-header">CLAIM</div>
+                                        <div class="er-node-body">
+                                            <span class="pk">PK: claim_id</span>
+                                            <span class="fk">FK: student_id</span>
+                                            <span class="fk">FK: item_id</span>
+                                            <span>claim_date</span>
+                                            <span>claim_status</span>
+                                            <span>proof_description</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="er-node" style="top: 220px; right: 30px;">
+                                        <div class="er-node-header">RETURN_RECORD</div>
+                                        <div class="er-node-body">
+                                            <span class="pk">PK: return_id</span>
+                                            <span class="fk">FK: student_id</span>
+                                            <span class="fk">FK: item_id</span>
+                                            <span>return_date</span>
+                                            <span>verified_by</span>
+                                            <span>remarks</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Normalization Proofs -->
+                    <div class="doc-card">
+                        <h3><i data-lucide="shield"></i> Normalization Analysis (1NF, 2NF, 3NF)</h3>
+                        <div class="norm-list">
+                            <div class="norm-item">
+                                <h4>1. First Normal Form (1NF)</h4>
+                                <p><strong>Rule:</strong> Each column contains atomic (indivisible) values, and each record is uniquely identifiable with a primary key.</p>
+                                <p><strong>Compliance:</strong> In our schema, student details (name, email, phone) and item attributes are stored as atomic fields. Repeating groups (such as multiple claims or lost items) are factored out into dedicated child tables.</p>
+                            </div>
+                            <div class="norm-item">
+                                <h4>2. Second Normal Form (2NF)</h4>
+                                <p><strong>Rule:</strong> Table is in 1NF and contains no Partial Functional Dependencies (no non-prime attribute depends on a proper subset of a composite candidate key).</p>
+                                <p><strong>Compliance:</strong> Every table uses a single surrogate primary key (<code>student_id</code>, <code>item_id</code>, <code>lost_id</code>, <code>found_id</code>, <code>claim_id</code>, <code>return_id</code>). Since all primary keys are single-attribute keys, partial dependencies are mathematically impossible.</p>
+                            </div>
+                            <div class="norm-item">
+                                <h4>3. Third Normal Form (3NF)</h4>
+                                <p><strong>Rule:</strong> Table is in 2NF and contains no Transitive Functional Dependencies (non-prime attributes depend ONLY on the primary key, i.e., $X \rightarrow Y$ implies $X$ is a superkey or $Y$ is a prime attribute).</p>
+                                <p><strong>Compliance:</strong> Student attributes (e.g. <code>department</code>, <code>phone</code>) are NOT duplicated in <code>LOST_ITEM</code> or <code>CLAIM</code>; only the foreign key <code>student_id</code> is referenced. Similarly, item attributes (e.g. <code>category</code>, <code>location</code>) exist only in <code>ITEM</code> and are accessed via relational joins.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Review 1 Viva Cheat Sheet -->
+                    <div class="doc-card">
+                        <h3><i data-lucide="help-circle"></i> Review 1 Viva Preparation (Key Questions & Answers)</h3>
+                        <div class="viva-accordion">
+                            <div class="viva-item">
+                                <div class="viva-q">Q1: Why did you separate ITEM from LOST_ITEM and FOUND_ITEM?</div>
+                                <div class="viva-a"><strong>Answer:</strong> To prevent data redundancy and support 3NF normalization. The <code>ITEM</code> entity represents the physical article (name, category, description, physical location), while <code>LOST_ITEM</code> and <code>FOUND_ITEM</code> represent transactional events linking specific students with event timestamps and lifecycles.</div>
+                            </div>
+                            <div class="viva-item">
+                                <div class="viva-q">Q2: How do you maintain referential integrity when a student or item is deleted?</div>
+                                <div class="viva-a"><strong>Answer:</strong> We configured foreign key constraints with <code>ON DELETE CASCADE</code> for operational tables (<code>LOST_ITEM</code>, <code>FOUND_ITEM</code>, <code>CLAIM</code>) and <code>ON DELETE RESTRICT</code> for <code>RETURN_RECORD</code> so that legal handover audit logs cannot be accidentally erased.</div>
+                            </div>
+                            <div class="viva-item">
+                                <div class="viva-q">Q3: What happens when an item claim is approved?</div>
+                                <div class="viva-a"><strong>Answer:</strong> When an admin approves a claim, our system executes a transactional update: the claim's status is set to 'Approved', the found item's status transitions to 'Claimed', and any other pending claims for that same item are automatically marked as 'Rejected'.</div>
+                            </div>
+                            <div class="viva-item">
+                                <div class="viva-q">Q4: What indexes did you create and why?</div>
+                                <div class="viva-a"><strong>Answer:</strong> We created B-tree indexes on <code>STUDENT(email)</code> (unique lookups), <code>ITEM(category)</code>, <code>ITEM(location)</code>, and status fields (<code>status</code>, <code>claim_status</code>) to accelerate multi-condition search queries across large datasets.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- MODALS -->
+    <!-- ================================================================= -->
+
+    <!-- Modal 1: Report Lost Item -->
+    <div class="modal-backdrop" id="modal-report-lost">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3><i data-lucide="search"></i> Report a Lost Item</h3>
+                <button class="modal-close" onclick="closeModal('modal-report-lost')">&times;</button>
+            </div>
+            <form id="form-report-lost" onsubmit="handleReportLost(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Reporting Student <span class="req">*</span></label>
+                        <select id="lost-student-id" required>
+                            <!-- Populated with students -->
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Item Name <span class="req">*</span></label>
+                            <input type="text" id="lost-item-name" placeholder="e.g. Student ID Card, Blue Umbrella" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category <span class="req">*</span></label>
+                            <select id="lost-category" required>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Documents / Cards">Documents / Cards</option>
+                                <option value="Stationery / Academic">Stationery / Academic</option>
+                                <option value="Accessories">Accessories</option>
+                                <option value="Personal Belongings">Personal Belongings</option>
+                                <option value="Keys / Cards">Keys / Cards</option>
+                                <option value="Books / Notes">Books / Notes</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Location Where Lost <span class="req">*</span></label>
+                            <input type="text" id="lost-location" placeholder="e.g. Central Library 2nd Floor, Food Court" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Date Lost <span class="req">*</span></label>
+                            <input type="date" id="lost-date" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Detailed Description & Identifying Marks</label>
+                        <textarea id="lost-description" rows="3" placeholder="Color, brand, stickers, scratches, case details, or engravings..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modal-report-lost')">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i data-lucide="send"></i> Submit Lost Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Report Found Item -->
+    <div class="modal-backdrop" id="modal-report-found">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3><i data-lucide="package-plus"></i> Report a Found Item</h3>
+                <button class="modal-close" onclick="closeModal('modal-report-found')">&times;</button>
+            </div>
+            <form id="form-report-found" onsubmit="handleReportFound(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Finder (Student) <span class="req">*</span></label>
+                        <select id="found-student-id" required>
+                            <!-- Populated with students -->
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Item Name <span class="req">*</span></label>
+                            <input type="text" id="found-item-name" placeholder="e.g. Boat Rockerz 450, Steel Bottle" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category <span class="req">*</span></label>
+                            <select id="found-category" required>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Documents / Cards">Documents / Cards</option>
+                                <option value="Stationery / Academic">Stationery / Academic</option>
+                                <option value="Accessories">Accessories</option>
+                                <option value="Personal Belongings">Personal Belongings</option>
+                                <option value="Keys / Cards">Keys / Cards</option>
+                                <option value="Books / Notes">Books / Notes</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Location Discovered <span class="req">*</span></label>
+                            <input type="text" id="found-location" placeholder="e.g. Block A Lobby, Tech Tower Lab 3" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Date Found <span class="req">*</span></label>
+                            <input type="date" id="found-date" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Storage / Custody Location <span class="req">*</span></label>
+                        <input type="text" id="found-storage-location" value="Campus Security / Lost & Found Desk" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Item Description & Condition</label>
+                        <textarea id="found-description" rows="3" placeholder="Condition, color, distinctive marks..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modal-report-found')">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i data-lucide="save"></i> Submit Found Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 3: Claim Item Modal -->
+    <div class="modal-backdrop" id="modal-claim-item">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3><i data-lucide="shield-check"></i> Submit Ownership Claim</h3>
+                <button class="modal-close" onclick="closeModal('modal-claim-item')">&times;</button>
+            </div>
+            <form id="form-claim-item" onsubmit="handleSubmitClaim(event)">
+                <input type="hidden" id="claim-item-id">
+                <div class="modal-body">
+                    <div class="claimed-item-banner" id="claim-item-banner">
+                        <!-- Populated with item info -->
+                    </div>
+
+                    <div class="form-group">
+                        <label>Claimant Student <span class="req">*</span></label>
+                        <select id="claim-student-id" required>
+                            <!-- Populated with students -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Claim Date <span class="req">*</span></label>
+                        <input type="date" id="claim-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Proof of Ownership & Specific Details <span class="req">*</span></label>
+                        <textarea id="claim-proof" rows="4" placeholder="Provide verifiable details (e.g. Serial number, wallpaper/lockscreen, password, engraved initials, purchase receipt, contents inside bag)..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modal-claim-item')">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i data-lucide="check"></i> Submit Claim</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 4: Record Return Modal -->
+    <div class="modal-backdrop" id="modal-process-return">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3><i data-lucide="handshake"></i> Authorize Item Return</h3>
+                <button class="modal-close" onclick="closeModal('modal-process-return')">&times;</button>
+            </div>
+            <form id="form-process-return" onsubmit="handleProcessReturn(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Select Item to Hand Over <span class="req">*</span></label>
+                        <select id="return-item-id" required>
+                            <!-- Populated with active items -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Receiving Student (Owner) <span class="req">*</span></label>
+                        <select id="return-student-id" required>
+                            <!-- Populated with students -->
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Return Handover Date <span class="req">*</span></label>
+                            <input type="date" id="return-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Verifying Officer / Authority <span class="req">*</span></label>
+                            <input type="text" id="return-verified-by" value="Campus Security Officer" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Verification Remarks / Settlement Notes</label>
+                        <textarea id="return-remarks" rows="3" placeholder="e.g. Identity verified via Student ID card & purchase invoice. Handed over in good condition."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modal-process-return')">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i data-lucide="check-circle-2"></i> Confirm Handover</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 5: Register Student Modal -->
+    <div class="modal-backdrop" id="modal-add-student">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3><i data-lucide="user-plus"></i> Register Student</h3>
+                <button class="modal-close" onclick="closeModal('modal-add-student')">&times;</button>
+            </div>
+            <form id="form-add-student" onsubmit="handleAddStudent(event)">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Registration Number (ID) <span class="req">*</span></label>
+                            <input type="text" id="new-student-id" placeholder="e.g. 24BDS0099" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Full Name <span class="req">*</span></label>
+                            <input type="text" id="new-student-name" placeholder="e.g. John Doe" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>University Email <span class="req">*</span></label>
+                            <input type="email" id="new-student-email" placeholder="e.g. john.doe2024@vitstudent.ac.in" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Number <span class="req">*</span></label>
+                            <input type="tel" id="new-student-phone" placeholder="e.g. 9876543210" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Department / Branch <span class="req">*</span></label>
+                        <select id="new-student-dept" required>
+                            <option value="Data Science">Data Science</option>
+                            <option value="Artificial Intelligence">Artificial Intelligence</option>
+                            <option value="Computer Science">Computer Science</option>
+                            <option value="Information Tech">Information Tech</option>
+                            <option value="Electronics & Comm">Electronics & Comm</option>
+                            <option value="Mechanical Engg">Mechanical Engg</option>
+                            <option value="Electrical Engg">Electrical Engg</option>
+                            <option value="Biotech">Biotech</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('modal-add-student')">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i data-lucide="user-check"></i> Register Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
