@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Campus Lost & Found System | DBMS Lab Project (Review 1 - 50%)</title>
+    <title>Campus Lost & Found Portal | Database Systems</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,18 +21,18 @@
             </div>
             <div class="brand-text">
                 <h1>Campus Lost & Found</h1>
-                <p class="brand-subtitle">DBMS Lab Project • 50% Milestone Review</p>
+                <p class="brand-subtitle">Asset Recovery & Registry Portal</p>
             </div>
         </div>
 
         <div class="nav-team-badge">
             <div class="team-tag">
-                <i data-lucide="users"></i>
-                <span>Team: <strong>Sritosh Rath</strong> (24BDS0001) & <strong>Jayant Sharma</strong> (24BAI0148)</span>
+                <i data-lucide="shield-check"></i>
+                <span>Sritosh Rath (24BDS0001) &bull; Jayant Sharma (24BAI0148)</span>
             </div>
             <div class="db-badge">
-                <span class="pulse-dot"></span>
-                <span>RDBMS: SQLite / MySQL 8.0</span>
+                <span class="status-dot"></span>
+                <span>SQLite / MySQL DB</span>
             </div>
         </div>
 
@@ -78,25 +78,21 @@
                     <span>Student Directory</span>
                 </button>
                 <div class="menu-divider"></div>
-                <div class="menu-label">DBMS Lab Review Hub</div>
-                <button class="nav-tab special-tab" data-tab="sql-lab">
+                <div class="menu-label">Database Console</div>
+                <button class="nav-tab console-tab" data-tab="sql-lab">
                     <i data-lucide="terminal"></i>
-                    <span>SQL Query Lab & DB</span>
-                </button>
-                <button class="nav-tab special-tab" data-tab="review-doc">
-                    <i data-lucide="file-text"></i>
-                    <span>Review 1 Report & ERD</span>
+                    <span>SQL Query Lab</span>
                 </button>
             </nav>
 
             <div class="sidebar-footer">
                 <div class="db-status-box">
                     <div class="status-header">
-                        <span class="status-indicator online"></span>
+                        <span class="status-dot online"></span>
                         <span class="status-title">Database Connected</span>
                     </div>
                     <div class="status-details">
-                        <small>6 Tables • Relational 3NF Schema</small>
+                        <small>6 Relational Tables &bull; 3NF Schema</small>
                     </div>
                 </div>
             </div>
@@ -109,8 +105,8 @@
             <section id="tab-dashboard" class="tab-pane active">
                 <div class="page-header">
                     <div>
-                        <h2 class="page-title">Executive Dashboard</h2>
-                        <p class="page-desc">Real-time statistics & campus lost and found activity stream</p>
+                        <h2 class="page-title">Campus Overview</h2>
+                        <p class="page-desc">Real-time catalog metrics, item custody tracking, and activity feed</p>
                     </div>
                     <div class="page-actions">
                         <button class="btn btn-secondary" onclick="loadDashboardStats()">
@@ -186,15 +182,18 @@
                 <!-- Quick Action Callouts -->
                 <div class="quick-action-banner">
                     <div class="banner-text">
-                        <h4>DBMS Project Review 1 Scope (50% Milestone)</h4>
-                        <p>Complete Relational Schema, Normalization to 3NF, Full DDL/DML, REST API, Search/Filter catalog, Claiming workflow, and Live SQL Query Lab.</p>
+                        <h4>Lost & Found Asset Management</h4>
+                        <p>Quickly log newly misplaced or discovered articles across campus, process verified claims, or inspect records in the SQL console.</p>
                     </div>
                     <div class="banner-buttons">
-                        <button class="btn btn-outline" onclick="switchTab('sql-lab')">
-                            <i data-lucide="terminal"></i> Test SQL Queries
+                        <button class="btn btn-secondary" onclick="openModal('modal-report-lost')">
+                            <i data-lucide="search"></i> Report Lost
                         </button>
-                        <button class="btn btn-primary" onclick="switchTab('review-doc')">
-                            <i data-lucide="book-open"></i> View Review Report
+                        <button class="btn btn-secondary" onclick="openModal('modal-report-found')">
+                            <i data-lucide="plus-circle"></i> Report Found
+                        </button>
+                        <button class="btn btn-primary" onclick="switchTab('sql-lab')">
+                            <i data-lucide="terminal"></i> SQL Query Lab
                         </button>
                     </div>
                 </div>
@@ -468,225 +467,6 @@
                     </div>
                 </div>
             </section>
-
-            <!-- 7. REVIEW 1 PRESENTATION & ER DIAGRAM TAB -->
-            <section id="tab-review-doc" class="tab-pane">
-                <div class="page-header">
-                    <div>
-                        <h2 class="page-title">Review 1 Presentation & Documentation</h2>
-                        <p class="page-desc">Comprehensive project overview, ER Diagram, 3NF Normalization, and Viva answers</p>
-                    </div>
-                    <div class="page-actions">
-                        <button class="btn btn-outline" onclick="window.print()">
-                            <i data-lucide="printer"></i> Print / Export Report
-                        </button>
-                    </div>
-                </div>
-
-                <div class="doc-container">
-                    <!-- Project Info Header -->
-                    <div class="doc-card">
-                        <div class="doc-header-block">
-                            <span class="doc-tag">DBMS Lab Course Project • 50% Review</span>
-                            <h2>Campus Lost & Found System</h2>
-                            <p class="lead">A centralized relational database management system for recording, tracking, claiming, and returning lost articles inside the university campus.</p>
-                            
-                            <div class="team-grid">
-                                <div class="team-member-card">
-                                    <div class="avatar">SR</div>
-                                    <div>
-                                        <strong>SRITOSH RATH</strong>
-                                        <p>Registration No: <code>24BDS0001</code></p>
-                                        <small>B.Tech Data Science</small>
-                                    </div>
-                                </div>
-                                <div class="team-member-card">
-                                    <div class="avatar">JS</div>
-                                    <div>
-                                        <strong>JAYANT SHARMA</strong>
-                                        <p>Registration No: <code>24BAI0148</code></p>
-                                        <small>B.Tech Artificial Intelligence</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Milestone 1 Status -->
-                    <div class="doc-card">
-                        <h3><i data-lucide="check-circle"></i> Review 1 (50% Milestone) Progress Checklist</h3>
-                        <div class="milestone-grid">
-                            <div class="milestone-item completed">
-                                <div class="check-icon"><i data-lucide="check"></i></div>
-                                <div>
-                                    <strong>Complete Database Schema (DDL)</strong>
-                                    <p>6 Relational tables created with PK, FK cascading rules, CHECK constraints, and indexes.</p>
-                                </div>
-                            </div>
-                            <div class="milestone-item completed">
-                                <div class="check-icon"><i data-lucide="check"></i></div>
-                                <div>
-                                    <strong>Normalization (1NF, 2NF, 3NF)</strong>
-                                    <p>Formal justification ensuring 0 partial and 0 transitive functional dependencies.</p>
-                                </div>
-                            </div>
-                            <div class="milestone-item completed">
-                                <div class="check-icon"><i data-lucide="check"></i></div>
-                                <div>
-                                    <strong>DML & Realistic Sample Data</strong>
-                                    <p>Populated with campus students, realistic item categories, claims, and returns.</p>
-                                </div>
-                            </div>
-                            <div class="milestone-item completed">
-                                <div class="check-icon"><i data-lucide="check"></i></div>
-                                <div>
-                                    <strong>CRUD & Core Operations REST API</strong>
-                                    <p>Working endpoints for reporting lost/found items, searching, claiming, and return processing.</p>
-                                </div>
-                            </div>
-                            <div class="milestone-item completed">
-                                <div class="check-icon"><i data-lucide="check"></i></div>
-                                <div>
-                                    <strong>Interactive User Interface & SQL Lab</strong>
-                                    <p>Live single-page application with real-time filters and custom SQL query runner.</p>
-                                </div>
-                            </div>
-                            <div class="milestone-item planned">
-                                <div class="check-icon"><i data-lucide="clock"></i></div>
-                                <div>
-                                    <strong>Review 2 (Final 50% Scope)</strong>
-                                    <p>Image uploads for items, email notification triggers, automated matching algorithms, and role-based student auth.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ER Diagram Visualizer -->
-                    <div class="doc-card">
-                        <h3><i data-lucide="git-branch"></i> Entity-Relationship (ER) Architecture</h3>
-                        <div class="er-diagram-box">
-                            <div class="mermaid-diagram-code">
-                                <div class="er-visual-container">
-                                    <div class="er-node" style="top: 20px; left: 50px;">
-                                        <div class="er-node-header">STUDENT</div>
-                                        <div class="er-node-body">
-                                            <span class="pk">PK: student_id</span>
-                                            <span>name</span>
-                                            <span>email (UQ)</span>
-                                            <span>phone</span>
-                                            <span>department</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="er-node" style="top: 20px; right: 50px;">
-                                        <div class="er-node-header">ITEM</div>
-                                        <div class="er-node-body">
-                                            <span class="pk">PK: item_id</span>
-                                            <span>item_name</span>
-                                            <span>category</span>
-                                            <span>description</span>
-                                            <span>location</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="er-node" style="top: 220px; left: 30px;">
-                                        <div class="er-node-header">LOST_ITEM</div>
-                                        <div class="er-node-body">
-                                            <span class="pk">PK: lost_id</span>
-                                            <span class="fk">FK: student_id</span>
-                                            <span class="fk">FK: item_id</span>
-                                            <span>date_lost</span>
-                                            <span>status</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="er-node" style="top: 220px; left: 260px;">
-                                        <div class="er-node-header">FOUND_ITEM</div>
-                                        <div class="er-node-body">
-                                            <span class="pk">PK: found_id</span>
-                                            <span class="fk">FK: student_id</span>
-                                            <span class="fk">FK: item_id</span>
-                                            <span>date_found</span>
-                                            <span>status</span>
-                                            <span>storage_location</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="er-node" style="top: 220px; right: 260px;">
-                                        <div class="er-node-header">CLAIM</div>
-                                        <div class="er-node-body">
-                                            <span class="pk">PK: claim_id</span>
-                                            <span class="fk">FK: student_id</span>
-                                            <span class="fk">FK: item_id</span>
-                                            <span>claim_date</span>
-                                            <span>claim_status</span>
-                                            <span>proof_description</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="er-node" style="top: 220px; right: 30px;">
-                                        <div class="er-node-header">RETURN_RECORD</div>
-                                        <div class="er-node-body">
-                                            <span class="pk">PK: return_id</span>
-                                            <span class="fk">FK: student_id</span>
-                                            <span class="fk">FK: item_id</span>
-                                            <span>return_date</span>
-                                            <span>verified_by</span>
-                                            <span>remarks</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Normalization Proofs -->
-                    <div class="doc-card">
-                        <h3><i data-lucide="shield"></i> Normalization Analysis (1NF, 2NF, 3NF)</h3>
-                        <div class="norm-list">
-                            <div class="norm-item">
-                                <h4>1. First Normal Form (1NF)</h4>
-                                <p><strong>Rule:</strong> Each column contains atomic (indivisible) values, and each record is uniquely identifiable with a primary key.</p>
-                                <p><strong>Compliance:</strong> In our schema, student details (name, email, phone) and item attributes are stored as atomic fields. Repeating groups (such as multiple claims or lost items) are factored out into dedicated child tables.</p>
-                            </div>
-                            <div class="norm-item">
-                                <h4>2. Second Normal Form (2NF)</h4>
-                                <p><strong>Rule:</strong> Table is in 1NF and contains no Partial Functional Dependencies (no non-prime attribute depends on a proper subset of a composite candidate key).</p>
-                                <p><strong>Compliance:</strong> Every table uses a single surrogate primary key (<code>student_id</code>, <code>item_id</code>, <code>lost_id</code>, <code>found_id</code>, <code>claim_id</code>, <code>return_id</code>). Since all primary keys are single-attribute keys, partial dependencies are mathematically impossible.</p>
-                            </div>
-                            <div class="norm-item">
-                                <h4>3. Third Normal Form (3NF)</h4>
-                                <p><strong>Rule:</strong> Table is in 2NF and contains no Transitive Functional Dependencies (non-prime attributes depend ONLY on the primary key, i.e., $X \rightarrow Y$ implies $X$ is a superkey or $Y$ is a prime attribute).</p>
-                                <p><strong>Compliance:</strong> Student attributes (e.g. <code>department</code>, <code>phone</code>) are NOT duplicated in <code>LOST_ITEM</code> or <code>CLAIM</code>; only the foreign key <code>student_id</code> is referenced. Similarly, item attributes (e.g. <code>category</code>, <code>location</code>) exist only in <code>ITEM</code> and are accessed via relational joins.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Review 1 Viva Cheat Sheet -->
-                    <div class="doc-card">
-                        <h3><i data-lucide="help-circle"></i> Review 1 Viva Preparation (Key Questions & Answers)</h3>
-                        <div class="viva-accordion">
-                            <div class="viva-item">
-                                <div class="viva-q">Q1: Why did you separate ITEM from LOST_ITEM and FOUND_ITEM?</div>
-                                <div class="viva-a"><strong>Answer:</strong> To prevent data redundancy and support 3NF normalization. The <code>ITEM</code> entity represents the physical article (name, category, description, physical location), while <code>LOST_ITEM</code> and <code>FOUND_ITEM</code> represent transactional events linking specific students with event timestamps and lifecycles.</div>
-                            </div>
-                            <div class="viva-item">
-                                <div class="viva-q">Q2: How do you maintain referential integrity when a student or item is deleted?</div>
-                                <div class="viva-a"><strong>Answer:</strong> We configured foreign key constraints with <code>ON DELETE CASCADE</code> for operational tables (<code>LOST_ITEM</code>, <code>FOUND_ITEM</code>, <code>CLAIM</code>) and <code>ON DELETE RESTRICT</code> for <code>RETURN_RECORD</code> so that legal handover audit logs cannot be accidentally erased.</div>
-                            </div>
-                            <div class="viva-item">
-                                <div class="viva-q">Q3: What happens when an item claim is approved?</div>
-                                <div class="viva-a"><strong>Answer:</strong> When an admin approves a claim, our system executes a transactional update: the claim's status is set to 'Approved', the found item's status transitions to 'Claimed', and any other pending claims for that same item are automatically marked as 'Rejected'.</div>
-                            </div>
-                            <div class="viva-item">
-                                <div class="viva-q">Q4: What indexes did you create and why?</div>
-                                <div class="viva-a"><strong>Answer:</strong> We created B-tree indexes on <code>STUDENT(email)</code> (unique lookups), <code>ITEM(category)</code>, <code>ITEM(location)</code>, and status fields (<code>status</code>, <code>claim_status</code>) to accelerate multi-condition search queries across large datasets.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
         </main>
     </div>
 
