@@ -37,6 +37,17 @@
         </div>
 
         <div class="nav-actions">
+            <!-- Role-Based Access Control Switcher -->
+            <div class="role-selector-wrap" title="Switch active portal role (RBAC)">
+                <span class="role-label"><i data-lucide="user-check"></i> Role:</span>
+                <select id="active-user-select" class="role-select" onchange="handleUserRoleChange(this.value)">
+                    <option value="security" selected>Security Officer (Officer Sharma)</option>
+                    <option value="admin">System Administrator (Admin)</option>
+                    <option value="sritosh">Student: Sritosh Rath (24BDS0001)</option>
+                    <option value="jayant">Student: Jayant Sharma (24BAI0148)</option>
+                </select>
+            </div>
+
             <button class="btn btn-outline-sm" id="btn-reset-db" title="Reset sample database to fresh state">
                 <i data-lucide="rotate-ccw"></i> Reset DB
             </button>
@@ -68,10 +79,19 @@
                     <span>Found Items</span>
                     <span class="tab-badge" id="badge-found-count">0</span>
                 </button>
+                <button class="nav-tab" data-tab="auto-match">
+                    <i data-lucide="sparkles"></i>
+                    <span>Smart Auto-Match</span>
+                    <span class="tab-badge badge-match-pill" id="badge-match-count">0</span>
+                </button>
                 <button class="nav-tab" data-tab="claims">
                     <i data-lucide="check-check"></i>
                     <span>Claims & Returns</span>
                     <span class="tab-badge warning" id="badge-claim-count">0</span>
+                </button>
+                <button class="nav-tab" data-tab="analytics">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Campus Analytics</span>
                 </button>
                 <button class="nav-tab" data-tab="students">
                     <i data-lucide="graduation-cap"></i>
@@ -92,7 +112,7 @@
                         <span class="status-title">Database Connected</span>
                     </div>
                     <div class="status-details">
-                        <small>6 Relational Tables &bull; 3NF Schema</small>
+                        <small>7 Relational Tables &bull; RBAC &bull; Views</small>
                     </div>
                 </div>
             </div>
@@ -291,7 +311,40 @@
                 </div>
             </section>
 
-            <!-- 4. CLAIMS & RETURNS WORKFLOW TAB -->
+            <!-- 4. SMART AUTO-MATCH TAB -->
+            <section id="tab-auto-match" class="tab-pane">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Automated Item Similarity & Matching Engine</h2>
+                        <p class="page-desc">Algorithmic cross-correlation between reported lost items and campus custody inventory</p>
+                    </div>
+                    <div class="page-actions">
+                        <select id="match-threshold-filter" class="form-select-inline" onchange="loadAutoMatches()">
+                            <option value="40">All Valid Matches (&ge; 40%)</option>
+                            <option value="60">Medium &amp; High (&ge; 60%)</option>
+                            <option value="75">High Confidence Only (&ge; 75%)</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="loadAutoMatches()">
+                            <i data-lucide="sparkles"></i> Run Match Scan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Algorithm Explainability Bar -->
+                <div class="algo-banner">
+                    <div class="algo-banner-header">
+                        <i data-lucide="cpu"></i>
+                        <span><strong>Similarity Scoring Weights:</strong> 40% Exact Category Match &bull; 25% Spatial / Building Proximity &bull; 35% Jaccard Token &amp; Keyword Overlap</span>
+                    </div>
+                </div>
+
+                <!-- Match Results Container -->
+                <div id="matches-container" class="matches-list-grid">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+
+            <!-- 5. CLAIMS & RETURNS WORKFLOW TAB -->
             <section id="tab-claims" class="tab-pane">
                 <div class="page-header">
                     <div>
@@ -299,7 +352,7 @@
                         <p class="page-desc">Review student ownership claims and authorize item handovers</p>
                     </div>
                     <div class="page-actions">
-                        <button class="btn btn-primary" onclick="openModal('modal-process-return')">
+                        <button class="btn btn-primary" id="btn-open-record-return" onclick="openModal('modal-process-return')">
                             <i data-lucide="handshake"></i> Record Item Return
                         </button>
                     </div>
@@ -347,12 +400,111 @@
                                     <th>Return Date</th>
                                     <th>Verified By Officer</th>
                                     <th>Remarks</th>
+                                    <th>Handover Slip</th>
                                 </tr>
                             </thead>
                             <tbody id="returns-table-body">
                                 <!-- Populated dynamically -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. CAMPUS ANALYTICS & HOTSPOTS TAB -->
+            <section id="tab-analytics" class="tab-pane">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Campus Loss Analytics &amp; Hotspot Intelligence</h2>
+                        <p class="page-desc">Spatial risk zones, asset recovery efficiency, and department loss trends</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-secondary" onclick="loadAnalytics()">
+                            <i data-lucide="refresh-cw"></i> Refresh Analytics
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analytics KPI Grid -->
+                <div class="kpi-grid">
+                    <div class="kpi-card success-card">
+                        <div class="kpi-icon"><i data-lucide="percent"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Recovery Rate</span>
+                            <h3 class="kpi-value" id="analytics-recovery-rate">0%</h3>
+                            <span class="kpi-subtext" id="analytics-recovery-sub">Calculated across all reports</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card primary-card">
+                        <div class="kpi-icon"><i data-lucide="timer"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Avg. Resolution Time</span>
+                            <h3 class="kpi-value" id="analytics-avg-turnaround">--</h3>
+                            <span class="kpi-subtext">Custody to verified handover</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card warning-card">
+                        <div class="kpi-icon"><i data-lucide="map-pin"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Top Loss Hotspot</span>
+                            <h3 class="kpi-value" id="analytics-top-hotspot" style="font-size: 1.25rem;">--</h3>
+                            <span class="kpi-subtext" id="analytics-top-hotspot-sub">Highest incident frequency</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card danger-card">
+                        <div class="kpi-icon"><i data-lucide="activity"></i></div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Total Reported Incidents</span>
+                            <h3 class="kpi-value" id="analytics-total-incidents">0</h3>
+                            <span class="kpi-subtext" id="analytics-total-sub">Lost + Found items combined</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics 2-Column Split -->
+                <div class="dash-columns">
+                    <!-- Column 1: Spatial Hotspots -->
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <h3><i data-lucide="flame"></i> Top Campus Loss Hotspots</h3>
+                            <span class="badge badge-info">Incident Density</span>
+                        </div>
+                        <p class="text-muted" style="margin-bottom: 1rem; font-size: 0.8rem;">
+                            Campus buildings and common areas where items are most frequently reported lost.
+                        </p>
+                        <div id="analytics-hotspots-list" class="hotspots-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Category Recovery Table -->
+                    <div class="dash-card">
+                        <div class="dash-card-header">
+                            <h3><i data-lucide="layers"></i> Category Recovery Breakdown</h3>
+                            <span class="badge badge-success">Efficiency</span>
+                        </div>
+                        <p class="text-muted" style="margin-bottom: 0.75rem; font-size: 0.8rem;">
+                            Settlement and custody metrics categorized by asset type.
+                        </p>
+                        <div class="table-responsive">
+                            <table class="data-table" style="font-size: 0.82rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Category</th>
+                                        <th>Lost</th>
+                                        <th>Found</th>
+                                        <th>Settled</th>
+                                        <th>Recovery Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="analytics-category-tbody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -524,6 +676,31 @@
                         <label>Detailed Description & Identifying Marks</label>
                         <textarea id="lost-description" rows="3" placeholder="Color, brand, stickers, scratches, case details, or engravings..."></textarea>
                     </div>
+
+                    <div class="form-group">
+                        <label>Item Photograph / Visual Evidence</label>
+                        <div class="image-upload-control">
+                            <div class="image-input-row">
+                                <input type="url" id="lost-image-url" placeholder="Paste image URL (https://...) or choose preset" oninput="previewModalImage('lost')">
+                                <label class="btn-file-upload" title="Upload local image">
+                                    <i data-lucide="upload"></i> Upload File
+                                    <input type="file" id="lost-image-file" accept="image/*" style="display:none;" onchange="handleFileUpload(event, 'lost')">
+                                </label>
+                            </div>
+                            <div class="image-presets-row">
+                                <span class="preset-label">Sample Presets:</span>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('lost', 'headphones')">Headphones</button>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('lost', 'bottle')">Water Bottle</button>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('lost', 'idcard')">ID Card</button>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('lost', 'backpack')">Backpack</button>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('lost', 'umbrella')">Umbrella</button>
+                            </div>
+                            <div id="lost-image-preview-wrap" class="image-preview-wrap" style="display:none;">
+                                <img id="lost-image-preview" src="" alt="Lost Item Preview">
+                                <button type="button" class="preview-remove-btn" onclick="clearModalImage('lost')">&times;</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline" onclick="closeModal('modal-report-lost')">Cancel</button>
@@ -587,6 +764,31 @@
                     <div class="form-group">
                         <label>Item Description & Condition</label>
                         <textarea id="found-description" rows="3" placeholder="Condition, color, distinctive marks..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Item Photograph / Verification Proof</label>
+                        <div class="image-upload-control">
+                            <div class="image-input-row">
+                                <input type="url" id="found-image-url" placeholder="Paste image URL (https://...) or choose preset" oninput="previewModalImage('found')">
+                                <label class="btn-file-upload" title="Upload local image">
+                                    <i data-lucide="upload"></i> Upload File
+                                    <input type="file" id="found-image-file" accept="image/*" style="display:none;" onchange="handleFileUpload(event, 'found')">
+                                </label>
+                            </div>
+                            <div class="image-presets-row">
+                                <span class="preset-label">Sample Presets:</span>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('found', 'headphones')">Headphones</button>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('found', 'bottle')">Water Bottle</button>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('found', 'idcard')">ID Card</button>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('found', 'keys')">Keys</button>
+                                <button type="button" class="preset-btn" onclick="applyImagePreset('found', 'laptop')">Laptop</button>
+                            </div>
+                            <div id="found-image-preview-wrap" class="image-preview-wrap" style="display:none;">
+                                <img id="found-image-preview" src="" alt="Found Item Preview">
+                                <button type="button" class="preview-remove-btn" onclick="clearModalImage('found')">&times;</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -733,6 +935,25 @@
                     <button type="submit" class="btn btn-primary"><i data-lucide="user-check"></i> Register Student</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Modal 6: Official Return Handover Receipt Certificate -->
+    <div class="modal-backdrop" id="modal-receipt">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-header">
+                <h3><i data-lucide="file-check-2"></i> Official Handover Receipt Certificate</h3>
+                <button class="modal-close" onclick="closeModal('modal-receipt')">&times;</button>
+            </div>
+            <div class="modal-body" id="receipt-modal-content">
+                <!-- Dynamically rendered certificate -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-receipt')">Close</button>
+                <button type="button" class="btn btn-primary" onclick="printReceiptCertificate()">
+                    <i data-lucide="printer"></i> Print Handover Slip
+                </button>
+            </div>
         </div>
     </div>
 

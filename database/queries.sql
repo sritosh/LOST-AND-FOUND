@@ -218,3 +218,66 @@ SELECT * FROM vw_found_items_detailed WHERE found_status = 'Pending';
 
 -- Q7.3: View claims overview
 SELECT * FROM vw_claims_overview ORDER BY claim_date DESC;
+
+-- Q7.4: View final returned items detailed view
+SELECT * FROM vw_returns_detailed ORDER BY return_date DESC;
+
+
+-- --------------------------------------------------------------------
+-- 8. CAMPUS ANALYTICS & RECOVERY HOTSPOTS
+-- --------------------------------------------------------------------
+
+-- Q8.1: Campus Loss Hotspots - Locations with the highest reported missing items
+SELECT 
+    location,
+    COUNT(*) AS total_lost_incidents,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ITEM), 2) AS percentage_of_campus_losses
+FROM ITEM
+GROUP BY location
+ORDER BY total_lost_incidents DESC
+LIMIT 5;
+
+-- Q8.2: Campus Asset Recovery Rate (KPI Metric)
+SELECT 
+    (SELECT COUNT(*) FROM ITEM) AS total_campus_items,
+    (SELECT COUNT(*) FROM RETURN_RECORD) AS total_returned_items,
+    ROUND(
+        ((SELECT COUNT(*) FROM RETURN_RECORD) * 100.0 / NULLIF((SELECT COUNT(*) FROM ITEM), 0)), 
+        2
+    ) AS campus_recovery_rate_pct;
+
+-- Q8.3: Average settlement turnaround days between reporting and returning
+SELECT 
+    ROUND(AVG(JULIANDAY(r.return_date) - JULIANDAY(l.date_lost)), 1) AS avg_days_to_return
+FROM RETURN_RECORD r
+JOIN LOST_ITEM l ON r.item_id = l.item_id;
+
+
+-- --------------------------------------------------------------------
+-- 9. AUTOMATED SIMILARITY MATCHING (LOST <-> FOUND CORRELATION)
+-- --------------------------------------------------------------------
+
+-- Q9.1: Match Finder - Suggests potential found items for pending lost items
+SELECT 
+    l.lost_id,
+    li.item_name AS lost_item,
+    li.category,
+    li.location AS lost_location,
+    f.found_id,
+    fi.item_name AS found_item,
+    fi.location AS found_location,
+    f.storage_location,
+    CASE 
+        WHEN li.category = fi.category AND li.location = fi.location THEN 'High Confidence (Category + Location)'
+        WHEN li.category = fi.category THEN 'Medium Confidence (Category Match)'
+        ELSE 'Low Confidence'
+    END AS match_confidence
+FROM LOST_ITEM l
+JOIN ITEM li ON l.item_id = li.item_id
+CROSS JOIN FOUND_ITEM f
+JOIN ITEM fi ON f.item_id = fi.item_id
+WHERE l.status = 'Pending' 
+  AND f.status = 'Pending'
+  AND li.category = fi.category
+ORDER BY l.lost_id ASC;
+

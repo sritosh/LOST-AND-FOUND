@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS CLAIM;
 DROP TABLE IF EXISTS FOUND_ITEM;
 DROP TABLE IF EXISTS LOST_ITEM;
 DROP TABLE IF EXISTS ITEM;
+DROP TABLE IF EXISTS USERS;
 DROP TABLE IF EXISTS STUDENT;
 
 -- ====================================================================
@@ -36,7 +37,7 @@ CREATE TABLE STUDENT (
 
 -- ====================================================================
 -- 2. ITEM TABLE
--- Master entity for items reported on campus
+-- Master entity for items reported on campus (with photo support)
 -- ====================================================================
 CREATE TABLE ITEM (
     item_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,6 +45,7 @@ CREATE TABLE ITEM (
     category VARCHAR(50) NOT NULL,
     description TEXT,
     location VARCHAR(150) NOT NULL,
+    image_url TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -138,6 +140,24 @@ CREATE TABLE RETURN_RECORD (
 );
 
 -- ====================================================================
+-- 7. USERS TABLE (ROLE-BASED ACCESS CONTROL - RBAC)
+-- Supports Student, Security Officer, and Admin Roles
+-- ====================================================================
+CREATE TABLE USERS (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('Admin', 'Student', 'Security')),
+    student_id VARCHAR(20),
+    full_name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_user_student FOREIGN KEY (student_id) 
+        REFERENCES STUDENT (student_id) 
+        ON DELETE SET NULL 
+        ON UPDATE CASCADE
+);
+
+-- ====================================================================
 -- INDEXES FOR PERFORMANCE OPTIMIZATION
 -- ====================================================================
 CREATE INDEX idx_student_email ON STUDENT (email);
@@ -146,6 +166,8 @@ CREATE INDEX idx_item_location ON ITEM (location);
 CREATE INDEX idx_lost_status ON LOST_ITEM (status);
 CREATE INDEX idx_found_status ON FOUND_ITEM (status);
 CREATE INDEX idx_claim_status ON CLAIM (claim_status);
+CREATE INDEX idx_users_username ON USERS (username);
+CREATE INDEX idx_users_role ON USERS (role);
 
 -- ====================================================================
 -- DATABASE VIEWS (FOR CONVENIENT REPORTING & QUERIES)
@@ -163,6 +185,7 @@ SELECT
     i.category,
     i.description,
     i.location AS location_lost,
+    i.image_url,
     s.student_id,
     s.name AS student_name,
     s.email AS student_email,
@@ -185,6 +208,7 @@ SELECT
     i.category,
     i.description,
     i.location AS location_found,
+    i.image_url,
     s.student_id AS finder_id,
     s.name AS finder_name,
     s.email AS finder_email,
@@ -206,6 +230,7 @@ SELECT
     i.item_name,
     i.category,
     i.location,
+    i.image_url,
     s.student_id AS claimant_id,
     s.name AS claimant_name,
     s.email AS claimant_email,
@@ -226,6 +251,7 @@ SELECT
     i.item_id,
     i.item_name,
     i.category,
+    i.image_url,
     s.student_id AS receiver_id,
     s.name AS receiver_name,
     s.email AS receiver_email,

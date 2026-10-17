@@ -1,10 +1,16 @@
 """
 Campus Lost & Found System - REST API Server
-Built with Flask & SQLite for DBMS Project Lab (50% Milestone Review)
+Built with Flask & SQLite for DBMS Project Lab (Full 100% Implementation)
 Authors: Sritosh Rath (24BDS0001), Jayant Sharma (24BAI0148)
 """
 
 import os
+import sys
+import re
+import uuid
+import time
+import hashlib
+from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
@@ -15,6 +21,8 @@ except ImportError:
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
+UPLOAD_FOLDER = os.path.join(FRONTEND_DIR, 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__, static_folder=FRONTEND_DIR)
 CORS(app)
@@ -29,6 +37,11 @@ init_db()
 @app.route('/')
 def serve_index():
     return send_from_directory(FRONTEND_DIR, 'index.html')
+
+
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 
 @app.route('/<path:path>')
@@ -171,7 +184,7 @@ def get_lost_items():
 
     query = """
         SELECT l.lost_id, l.date_lost, l.status, l.reported_at,
-               i.item_id, i.item_name, i.category, i.description, i.location,
+               i.item_id, i.item_name, i.category, i.description, i.location, i.image_url,
                s.student_id, s.name as student_name, s.email as student_email, s.phone as student_phone, s.department
         FROM LOST_ITEM l
         JOIN ITEM i ON l.item_id = i.item_id
@@ -208,6 +221,7 @@ def report_lost_item():
     description = data.get('description', '').strip()
     location = data.get('location', '').strip()
     date_lost = data.get('date_lost', '').strip()
+    image_url = data.get('image_url', '').strip() or None
 
     if not all([student_id, item_name, category, location, date_lost]):
         return jsonify({"error": "Missing required fields (student_id, item_name, category, location, date_lost)"}), 400
@@ -218,10 +232,10 @@ def report_lost_item():
         return jsonify({"error": f"Student with ID '{student_id}' does not exist. Please register student first."}), 404
 
     try:
-        # 1. Insert into ITEM
+        # 1. Insert into ITEM (including image_url)
         item_id, _ = execute_write(
-            "INSERT INTO ITEM (item_name, category, description, location) VALUES (?, ?, ?, ?)",
-            (item_name, category, description, location)
+            "INSERT INTO ITEM (item_name, category, description, location, image_url) VALUES (?, ?, ?, ?, ?)",
+            (item_name, category, description, location, image_url)
         )
 
         # 2. Insert into LOST_ITEM
@@ -251,7 +265,7 @@ def get_found_items():
 
     query = """
         SELECT f.found_id, f.date_found, f.status, f.storage_location, f.reported_at,
-               i.item_id, i.item_name, i.category, i.description, i.location,
+               i.item_id, i.item_name, i.category, i.description, i.location, i.image_url,
                s.student_id as finder_id, s.name as finder_name, s.email as finder_email, s.phone as finder_phone, s.department as finder_dept,
                (SELECT COUNT(*) FROM CLAIM WHERE item_id = i.item_id) as claim_count
         FROM FOUND_ITEM f
@@ -290,6 +304,7 @@ def report_found_item():
     location = data.get('location', '').strip()
     date_found = data.get('date_found', '').strip()
     storage_location = data.get('storage_location', 'Campus Security / Lost & Found Desk').strip()
+    image_url = data.get('image_url', '').strip() or None
 
     if not all([student_id, item_name, category, location, date_found]):
         return jsonify({"error": "Missing required fields (student_id, item_name, category, location, date_found)"}), 400
@@ -300,8 +315,8 @@ def report_found_item():
 
     try:
         item_id, _ = execute_write(
-            "INSERT INTO ITEM (item_name, category, description, location) VALUES (?, ?, ?, ?)",
-            (item_name, category, description, location)
+            "INSERT INTO ITEM (item_name, category, description, location, image_url) VALUES (?, ?, ?, ?, ?)",
+            (item_name, category, description, location, image_url)
         )
 
         found_id, _ = execute_write(
@@ -452,7 +467,324 @@ def record_return():
 
 
 # -----------------------------------------------------------------------------
-# 7. SQL QUERY LAB & LIVE DEMO API
+# 7. IMAGE UPLOADS API
+# -----------------------------------------------------------------------------
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    """Handles image upload or base64 storage for lost/found items."""
+    if 'file' in request.files:
+        file = request.files['file']
+        if file.filename:
+            ext = os.path.splitext(file.filename)[1].lower() or '.jpg'
+            filename = f"item_{uuid.uuid4().hex[:8]}{ext}"
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(filepath)
+            return jsonify({"url": f"/uploads/{filename}", "success": True})
+
+    data = request.json or {}
+    image_url = data.get('image_url')
+    if image_url:
+        return jsonify({"url": image_url, "success": True})
+
+    return jsonify({"error": "No file or image_url provided"}), 400
+
+
+# -----------------------------------------------------------------------------
+# 8. SMART AUTOMATED SIMILARITY MATCHING (LOST <-> FOUND CORRELATION)
+# -----------------------------------------------------------------------------
+STOP_WORDS = {
+    'a', 'an', 'the', 'in', 'on', 'at', 'near', 'by', 'with', 'and', 'or', 'for', 'of',
+    'is', 'was', 'to', 'from', 'it', 'my', 'vit', 'block', 'room', 'floor', 'campus', 'color'
+}
+
+def extract_keywords(text):
+    if not text:
+        return set()
+    words = re.findall(r'[a-zA-Z0-9]{3,}', text.lower())
+    return {w for w in words if w not in STOP_WORDS}
+
+def calculate_similarity(lost, found):
+    reasons = []
+    score = 0
+    
+    # 1. Category match (Weight: 40%)
+    if lost['category'] == found['category']:
+        score += 40
+        reasons.append(f"Category matched: {lost['category']}")
+    elif any(k in lost['category'] and k in found['category'] for k in ['Electronics', 'Card', 'Academic', 'Accessories']):
+        score += 25
+        reasons.append("Related category")
+
+    # 2. Location match (Weight: 25%)
+    lost_loc = (lost['location'] or '').lower()
+    found_loc = (found['location'] or '').lower()
+    if lost_loc and found_loc:
+        if lost_loc == found_loc:
+            score += 25
+            reasons.append(f"Exact location matched: {lost['location']}")
+        else:
+            lost_tokens = extract_keywords(lost_loc)
+            found_tokens = extract_keywords(found_loc)
+            shared_loc = lost_tokens.intersection(found_tokens)
+            if shared_loc:
+                score += 15
+                reasons.append(f"Nearby zone overlap: {', '.join(shared_loc)}")
+
+    # 3. Item Name & Description text overlap (Weight: 35%)
+    lost_text_tokens = extract_keywords(f"{lost['item_name']} {lost['description']}")
+    found_text_tokens = extract_keywords(f"{found['item_name']} {found['description']}")
+    shared_tokens = lost_text_tokens.intersection(found_text_tokens)
+
+    if shared_tokens:
+        token_pts = min(len(shared_tokens) * 12, 35)
+        score += token_pts
+        reasons.append(f"Keywords: {', '.join(list(shared_tokens)[:4])}")
+
+    score = min(score, 98)
+
+    if score >= 75:
+        confidence = "High"
+    elif score >= 50:
+        confidence = "Medium"
+    else:
+        confidence = "Possible"
+
+    return score, confidence, reasons
+
+
+@app.route('/api/match-suggestions', methods=['GET'])
+def get_match_suggestions():
+    """Smart algorithm comparing active lost items against found inventory."""
+    lost_items = query_all("""
+        SELECT l.lost_id, l.date_lost, l.status,
+               i.item_id, i.item_name, i.category, i.description, i.location, i.image_url,
+               s.student_id, s.name as student_name, s.department
+        FROM LOST_ITEM l
+        JOIN ITEM i ON l.item_id = i.item_id
+        JOIN STUDENT s ON l.student_id = s.student_id
+        WHERE l.status = 'Pending'
+    """)
+    found_items = query_all("""
+        SELECT f.found_id, f.date_found, f.status, f.storage_location,
+               i.item_id, i.item_name, i.category, i.description, i.location, i.image_url,
+               s.student_id as finder_id, s.name as finder_name
+        FROM FOUND_ITEM f
+        JOIN ITEM i ON f.item_id = i.item_id
+        JOIN STUDENT s ON f.student_id = s.student_id
+        WHERE f.status = 'Pending'
+    """)
+
+    suggestions = []
+    for lost in lost_items:
+        for found in found_items:
+            score, confidence, reasons = calculate_similarity(lost, found)
+            if score >= 40:
+                loc_match = (lost['location'].strip().lower() == found['location'].strip().lower())
+                loc_score = 25 if loc_match else 0
+                token_score = max(0, min(score - 40 - loc_score, 35))
+                common_tokens = [w for w in reasons if not w.startswith("Exact category") and not w.startswith("Location proximity")]
+                
+                suggestions.append({
+                    "match_id": f"M-{lost['lost_id']}-{found['found_id']}",
+                    "score": score,
+                    "confidence": confidence,
+                    "reasons": reasons,
+                    "lost_id": lost['lost_id'],
+                    "lost_item_id": lost['item_id'],
+                    "lost_item_name": lost['item_name'],
+                    "lost_category": lost['category'],
+                    "lost_location": lost['location'],
+                    "lost_date": lost['date_lost'],
+                    "lost_description": lost['description'],
+                    "lost_image_url": lost['image_url'],
+                    "lost_student_id": lost['student_id'],
+                    "lost_student_name": lost['student_name'],
+                    "found_id": found['found_id'],
+                    "found_item_id": found['item_id'],
+                    "found_item_name": found['item_name'],
+                    "found_category": found['category'],
+                    "found_location": found['location'],
+                    "found_date": found['date_found'],
+                    "found_storage_location": found['storage_location'],
+                    "found_description": found['description'],
+                    "found_image_url": found['image_url'],
+                    "found_finder_id": found['finder_id'],
+                    "found_finder_name": found['finder_name'],
+                    "factors": {
+                        "category_match": True,
+                        "location_match": loc_match,
+                        "location_score": loc_score,
+                        "token_score": token_score,
+                        "common_tokens": common_tokens
+                    },
+                    "lost_item": lost,
+                    "found_item": found
+                })
+
+    suggestions.sort(key=lambda x: x['score'], reverse=True)
+    return jsonify(suggestions)
+
+
+# -----------------------------------------------------------------------------
+# 9. CAMPUS ANALYTICS & RECOVERY HOTSPOTS API
+# -----------------------------------------------------------------------------
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    """Returns campus recovery rate, loss hotspots, and turnaround stats."""
+    total_items = query_one("SELECT COUNT(*) as c FROM ITEM")['c'] or 1
+    total_lost = query_one("SELECT COUNT(*) as c FROM LOST_ITEM")['c']
+    total_found = query_one("SELECT COUNT(*) as c FROM FOUND_ITEM")['c']
+    total_claims = query_one("SELECT COUNT(*) as c FROM CLAIM")['c']
+    total_returns = query_one("SELECT COUNT(*) as c FROM RETURN_RECORD")['c']
+
+    recovery_rate = round((total_returns / total_items) * 100, 1)
+
+    # Campus hotspots (Top 6 locations with most missing/found items)
+    hotspots = query_all("""
+        SELECT location,
+               COUNT(*) as incident_count,
+               SUM(CASE WHEN item_id IN (SELECT item_id FROM LOST_ITEM) THEN 1 ELSE 0 END) as lost_count,
+               SUM(CASE WHEN item_id IN (SELECT item_id FROM FOUND_ITEM) THEN 1 ELSE 0 END) as found_count
+        FROM ITEM
+        GROUP BY location
+        ORDER BY incident_count DESC
+        LIMIT 6
+    """)
+
+    # Category recovery breakdown
+    category_metrics = query_all("""
+        SELECT 
+            i.category,
+            SUM(CASE WHEN i.item_id IN (SELECT item_id FROM LOST_ITEM) THEN 1 ELSE 0 END) as lost_count,
+            SUM(CASE WHEN i.item_id IN (SELECT item_id FROM FOUND_ITEM) THEN 1 ELSE 0 END) as found_count,
+            COUNT(r.return_id) as returned_count,
+            ROUND(COUNT(r.return_id) * 100.0 / NULLIF(COUNT(i.item_id), 0), 1) as recovery_rate
+        FROM ITEM i
+        LEFT JOIN RETURN_RECORD r ON i.item_id = r.item_id
+        GROUP BY i.category
+        ORDER BY COUNT(i.item_id) DESC
+    """)
+
+    # Average settlement days
+    avg_turnaround = query_one("""
+        SELECT ROUND(AVG(JULIANDAY(r.return_date) - JULIANDAY(l.date_lost)), 1) as avg_days
+        FROM RETURN_RECORD r
+        JOIN LOST_ITEM l ON r.item_id = l.item_id
+    """)
+    avg_days = avg_turnaround['avg_days'] if avg_turnaround and avg_turnaround['avg_days'] is not None else 2.5
+
+    return jsonify({
+        "total_incidents": total_lost + total_found,
+        "total_items": total_items,
+        "total_lost": total_lost,
+        "total_found": total_found,
+        "total_claims": total_claims,
+        "total_returns": total_returns,
+        "recovery_rate": recovery_rate,
+        "recovery_rate_pct": recovery_rate,
+        "avg_turnaround_days": avg_days,
+        "avg_days_to_return": avg_days,
+        "hotspots": hotspots,
+        "category_metrics": category_metrics,
+        "category_stats": category_metrics
+    })
+
+
+@app.route('/api/reset-demo', methods=['POST'])
+def reset_demo():
+    """Resets the database schema and sample data to fresh state."""
+    try:
+        init_db(force_reinit=True)
+        return jsonify({"message": "Database successfully reset to pristine seed state with all 7 tables and sample records."})
+    except Exception as e:
+        return jsonify({"error": f"Reset failed: {str(e)}"}), 500
+
+
+# -----------------------------------------------------------------------------
+# 10. ROLE-BASED AUTHENTICATION (RBAC) API
+# -----------------------------------------------------------------------------
+@app.route('/api/auth/users', methods=['GET'])
+def get_auth_users():
+    """Lists available seed accounts for instant demo role switching."""
+    users = query_all("""
+        SELECT u.user_id, u.username, u.role, u.full_name, u.student_id,
+               s.department, s.email, s.phone
+        FROM USERS u
+        LEFT JOIN STUDENT s ON u.student_id = s.student_id
+        ORDER BY u.user_id ASC
+    """)
+    return jsonify(users)
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def auth_login():
+    """Authenticates user and returns profile and role permissions."""
+    data = request.json or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+
+    user = query_one("""
+        SELECT u.user_id, u.username, u.role, u.full_name, u.student_id,
+               s.department, s.email, s.phone
+        FROM USERS u
+        LEFT JOIN STUDENT s ON u.student_id = s.student_id
+        WHERE u.username = ? AND u.password_hash = ?
+    """, (username, password))
+
+    if not user:
+        return jsonify({"error": "Invalid credentials. Try admin/admin123, security/security123, or sritosh/sritosh123"}), 401
+
+    role = user['role']
+    permissions = {
+        "can_approve_claim": role in ['Admin', 'Security'],
+        "can_record_return": role in ['Admin', 'Security'],
+        "can_claim_item": role in ['Student', 'Admin'],
+        "can_report": True,
+        "can_view_analytics": True
+    }
+
+    return jsonify({
+        "message": f"Welcome back, {user['full_name']}!",
+        "user": user,
+        "permissions": permissions
+    })
+
+
+# -----------------------------------------------------------------------------
+# 11. PRINTABLE RETURN HANDOVER RECEIPT API
+# -----------------------------------------------------------------------------
+@app.route('/api/returns/<int:return_id>/receipt', methods=['GET'])
+def get_return_receipt(return_id):
+    """Generates an official return handover certificate and QR code payload."""
+    record = query_one("""
+        SELECT r.return_id, r.return_date, r.verified_by, r.remarks, r.created_at,
+               i.item_id, i.item_name, i.category, i.description, i.location, i.image_url,
+               s.student_id, s.name as student_name, s.department, s.email, s.phone
+        FROM RETURN_RECORD r
+        JOIN ITEM i ON r.item_id = i.item_id
+        JOIN STUDENT s ON r.student_id = s.student_id
+        WHERE r.return_id = ?
+    """, (return_id,))
+
+    if not record:
+        return jsonify({"error": "Return record not found"}), 404
+
+    raw_sig = f"{record['return_id']}-{record['student_id']}-{record['item_id']}-{record['return_date']}"
+    verification_hash = hashlib.sha256(raw_sig.encode()).hexdigest()[:16].upper()
+
+    receipt_data = {
+        "receipt_number": f"RET-VIT-{record['return_id']:04d}",
+        "verification_code": verification_hash,
+        "issued_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "return_details": record,
+        "institution": "University Campus Lost & Found Cell",
+        "qr_payload": f"CAMPUS-LOST-FOUND:RECEIPT={record['return_id']}:VERIFY={verification_hash}:STUDENT={record['student_id']}"
+    }
+    return jsonify(receipt_data)
+
+
+# -----------------------------------------------------------------------------
+# 12. SQL QUERY LAB & LIVE DEMO API
 # -----------------------------------------------------------------------------
 @app.route('/api/query', methods=['POST'])
 def run_sql_query():
@@ -469,7 +801,7 @@ def run_sql_query():
 @app.route('/api/schema', methods=['GET'])
 def get_schema():
     """Returns database tables, column structures, and record counts."""
-    tables_list = ['STUDENT', 'ITEM', 'LOST_ITEM', 'FOUND_ITEM', 'CLAIM', 'RETURN_RECORD']
+    tables_list = ['STUDENT', 'ITEM', 'LOST_ITEM', 'FOUND_ITEM', 'CLAIM', 'RETURN_RECORD', 'USERS']
     schema_info = []
 
     for tbl in tables_list:

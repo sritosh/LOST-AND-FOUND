@@ -12,7 +12,7 @@ DELIMITER $$
 
 -- --------------------------------------------------------------------
 -- 1. STORED PROCEDURE: sp_report_lost_item
--- Atomically inserts an item into ITEM and links it in LOST_ITEM
+-- Atomically inserts an item into ITEM (with image) and links it in LOST_ITEM
 -- --------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_report_lost_item$$
 CREATE PROCEDURE sp_report_lost_item(
@@ -22,13 +22,14 @@ CREATE PROCEDURE sp_report_lost_item(
     IN p_description TEXT,
     IN p_location VARCHAR(150),
     IN p_date_lost DATE,
+    IN p_image_url TEXT,
     OUT p_item_id INT,
     OUT p_lost_id INT
 )
 BEGIN
     -- Insert master item
-    INSERT INTO ITEM (item_name, category, description, location)
-    VALUES (p_item_name, p_category, p_description, p_location);
+    INSERT INTO ITEM (item_name, category, description, location, image_url)
+    VALUES (p_item_name, p_category, p_description, p_location, p_image_url);
     
     SET p_item_id = LAST_INSERT_ID();
     
@@ -42,7 +43,7 @@ END$$
 
 -- --------------------------------------------------------------------
 -- 2. STORED PROCEDURE: sp_report_found_item
--- Atomically inserts an item into ITEM and links it in FOUND_ITEM
+-- Atomically inserts an item into ITEM (with image) and links it in FOUND_ITEM
 -- --------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_report_found_item$$
 CREATE PROCEDURE sp_report_found_item(
@@ -53,12 +54,13 @@ CREATE PROCEDURE sp_report_found_item(
     IN p_location VARCHAR(150),
     IN p_date_found DATE,
     IN p_storage_location VARCHAR(100),
+    IN p_image_url TEXT,
     OUT p_item_id INT,
     OUT p_found_id INT
 )
 BEGIN
-    INSERT INTO ITEM (item_name, category, description, location)
-    VALUES (p_item_name, p_category, p_description, p_location);
+    INSERT INTO ITEM (item_name, category, description, location, image_url)
+    VALUES (p_item_name, p_category, p_description, p_location, p_image_url);
     
     SET p_item_id = LAST_INSERT_ID();
     

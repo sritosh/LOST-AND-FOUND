@@ -26,13 +26,13 @@ if __name__ == '__main__':
     print("\n" + "="*65)
     print("  CAMPUS LOST & FOUND SYSTEM - DBMS LAB PROJECT")
     print("  Team: Sritosh Rath (24BDS0001) & Jayant Sharma (24BAI0148)")
-    print("  Milestone: Review 1 (50% Progress Demonstration)")
+    print("  Milestone: Final Submission (100% Complete Production Portal)")
     print("="*65 + "\n")
 
     # Ensure DB is ready
     print("[1/3] Initializing SQLite / MySQL Database Schema & Sample Data...")
     init_db()
-    print("[2/3] Database successfully prepared with 6 normalized 3NF tables!")
+    print("[2/3] Database successfully prepared with 7 relational tables & RBAC!")
     
     # Launch browser thread
     threading.Thread(target=open_browser, daemon=True).start()

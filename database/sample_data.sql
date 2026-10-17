@@ -22,30 +22,35 @@ INSERT INTO STUDENT (student_id, name, email, phone, department) VALUES
 ('24BAI0092', 'Aditya Nair', 'aditya.nair2024@vitstudent.ac.in', '9867890123', 'Artificial Intelligence');
 
 -- --------------------------------------------------------------------
--- 2. INSERT ITEMS (Master item catalog)
 -- --------------------------------------------------------------------
-INSERT INTO ITEM (item_name, category, description, location) VALUES
+-- 2. INSERT ITEMS (Master item catalog with photos)
+-- --------------------------------------------------------------------
+INSERT INTO ITEM (item_name, category, description, location, image_url) VALUES
 -- Item 1: Lost by Sritosh
-('Student ID Card', 'Documents / Cards', 'VIT Student ID card with lanyard, blue holder', 'Central Library 2nd Floor'),
+('Student ID Card', 'Documents / Cards', 'VIT Student ID card with lanyard, blue holder', 'Central Library 2nd Floor', 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80'),
 -- Item 2: Lost by Ananya
-('Apple AirPods Pro 2', 'Electronics', 'White charging case with small dragon sticker', 'Food Court 1 (Gazebo)'),
+('Apple AirPods Pro 2', 'Electronics', 'White charging case with small dragon sticker', 'Food Court 1 (Gazebo)', 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?auto=format&fit=crop&w=600&q=80'),
 -- Item 3: Lost by Rahul
-('Casio FX-991EX Calculator', 'Stationery / Academic', 'Scientific calculator with engraved name RV on back', 'Main Building Room 304'),
+('Casio FX-991EX Calculator', 'Stationery / Academic', 'Scientific calculator with engraved name RV on back', 'Main Building Room 304', 'https://images.unsplash.com/photo-1594980596870-8aa52a78d8cd?auto=format&fit=crop&w=600&q=80'),
 -- Item 4: Lost by Priya
-('Titan Metal Watch', 'Accessories', 'Silver analog dial with brown leather strap', 'Sports Complex Badminton Court'),
+('Titan Metal Watch', 'Accessories', 'Silver analog dial with brown leather strap', 'Sports Complex Badminton Court', 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=600&q=80'),
 -- Item 5: Lost by Karthik
-('MacBook Charger (67W)', 'Electronics', 'USB-C white adapter with braided cable', 'Tech Tower Lab 5'),
+('MacBook Charger (67W)', 'Electronics', 'USB-C white adapter with braided cable', 'Tech Tower Lab 5', 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=600&q=80'),
 
 -- Item 6: Found by Jayant
-('Boat Rockerz 450 Headphones', 'Electronics', 'Matte Black over-ear wireless headphones', 'Block A Auditorium Lobby'),
+('Boat Rockerz 450 Headphones', 'Electronics', 'Matte Black over-ear wireless headphones', 'Block A Auditorium Lobby', 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80'),
 -- Item 7: Found by Sneha
-('Steel Water Bottle (Milton)', 'Personal Belongings', 'Blue 1-litre insulated flask with scratch near cap', 'Hexagon Canteen Area'),
+('Steel Water Bottle (Milton)', 'Personal Belongings', 'Blue 1-litre insulated flask with scratch near cap', 'Hexagon Canteen Area', 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=600&q=80'),
 -- Item 8: Found by Aditya
-('Campus RFID Gate Pass & Keys', 'Keys / Cards', 'Set of 3 keys with red Marvel keychain and hostel tag', 'Main Gate Security Gate 2'),
+('Campus RFID Gate Pass & Keys', 'Keys / Cards', 'Set of 3 keys with red Marvel keychain and hostel tag', 'Main Gate Security Gate 2', 'https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=600&q=80'),
 -- Item 9: Found by Sritosh
-('Data Structures Notebook', 'Books / Notes', 'Hardbound 200 pages spiral notebook with DBMS notes', 'Library Reading Hall 1'),
+('Data Structures Notebook', 'Books / Notes', 'Hardbound 200 pages spiral notebook with DBMS notes', 'Library Reading Hall 1', 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80'),
 -- Item 10: Found by Rahul
-('Fastrack Wayfarer Sunglasses', 'Accessories', 'Black frame sunglasses inside hard zip case', 'Outdoor Amphitheater');
+('Fastrack Wayfarer Sunglasses', 'Accessories', 'Black frame sunglasses inside hard zip case', 'Outdoor Amphitheater', 'https://images.unsplash.com/photo-1511499767150-a48a237f0083?auto=format&fit=crop&w=600&q=80'),
+-- Item 11: Lost by Ananya (High similarity match with Item 6)
+('Boat Rockerz Headphones', 'Electronics', 'Black wireless over-ear headphones with cushion case', 'Block A Auditorium Lobby', 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=600&q=80'),
+-- Item 12: Lost by Sritosh (High similarity match with Item 7)
+('Steel Flask (Milton Blue)', 'Personal Belongings', '1 Litre insulated flask lost near cafeteria table', 'Hexagon Canteen Area', 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=600&q=80');
 
 -- --------------------------------------------------------------------
 -- 3. INSERT LOST ITEMS
@@ -55,7 +60,9 @@ INSERT INTO LOST_ITEM (student_id, item_id, date_lost, status) VALUES
 ('24BCS0032', 2, '2026-10-04', 'Pending'),
 ('24BEC0105', 3, '2026-10-05', 'Claimed'),
 ('24BME0054', 4, '2026-10-06', 'Returned'),
-('24BIT0089', 5, '2026-10-07', 'Pending');
+('24BIT0089', 5, '2026-10-07', 'Pending'),
+('24BCS0032', 11, '2026-10-08', 'Pending'),
+('24BDS0001', 12, '2026-10-09', 'Pending');
 
 -- --------------------------------------------------------------------
 -- 4. INSERT FOUND ITEMS
@@ -82,3 +89,13 @@ INSERT INTO CLAIM (student_id, item_id, claim_date, claim_status, proof_descript
 INSERT INTO RETURN_RECORD (student_id, item_id, return_date, verified_by, remarks) VALUES
 ('24BME0054', 4, '2026-10-08', 'Officer K. Raman', 'Student provided purchase invoice and photo ID matching the item description.'),
 ('24BEC0105', 10, '2026-10-09', 'Security Supervisor Suresh', 'Claim verified via optical prescription sticker on the case and student ID.');
+
+-- --------------------------------------------------------------------
+-- 7. INSERT USERS (Role-Based Authentication Seed Accounts)
+-- --------------------------------------------------------------------
+INSERT INTO USERS (username, password_hash, role, student_id, full_name) VALUES
+('admin', 'admin123', 'Admin', NULL, 'Dr. V. Raghavan (Faculty Administrator)'),
+('security', 'security123', 'Security', NULL, 'Officer K. Raman (Campus Security Chief)'),
+('sritosh', 'sritosh123', 'Student', '24BDS0001', 'Sritosh Rath (24BDS0001)'),
+('jayant', 'jayant123', 'Student', '24BAI0148', 'Jayant Sharma (24BAI0148)');
+

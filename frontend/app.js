@@ -104,6 +104,26 @@ SELECT claim_id, item_name, claimant_name, claim_date, claim_status
 FROM vw_claims_overview;`
 };
 
+// Quick Image Presets for Instant Lab Evaluation
+const IMAGE_PRESETS = {
+    headphones: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
+    bottle: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=500&q=80',
+    idcard: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&q=80',
+    backpack: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500&q=80',
+    umbrella: 'https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=500&q=80',
+    keys: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?w=500&q=80',
+    laptop: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&q=80',
+    book: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=500&q=80'
+};
+
+// Global RBAC Current User State
+let currentUser = {
+    username: 'security',
+    role: 'Security Officer',
+    name: 'Officer Sharma (Security Chief)',
+    student_id: null
+};
+
 // Global application state
 let studentsList = [];
 let activeFoundItemsList = [];
@@ -175,6 +195,109 @@ function initDateInputs() {
 }
 
 // ====================================================================
+// RBAC & ROLE SWITCHING
+// ====================================================================
+function handleUserRoleChange(username) {
+    if (username === 'security') {
+        currentUser = { username: 'security', role: 'Security Officer', name: 'Officer Sharma (Security Chief)', student_id: null };
+    } else if (username === 'admin') {
+        currentUser = { username: 'admin', role: 'Admin', name: 'System Administrator', student_id: null };
+    } else if (username === 'sritosh') {
+        currentUser = { username: 'sritosh', role: 'Student', name: 'Sritosh Rath', student_id: '24BDS0001' };
+    } else if (username === 'jayant') {
+        currentUser = { username: 'jayant', role: 'Student', name: 'Jayant Sharma', student_id: '24BAI0148' };
+    }
+
+    applyRolePermissions();
+    showToast(`Switched active profile to: ${currentUser.name} (${currentUser.role})`, 'info');
+}
+
+function applyRolePermissions() {
+    const isStaff = (currentUser.role === 'Admin' || currentUser.role === 'Security Officer');
+    
+    // Disable or enable Record Return button
+    const recordReturnBtn = document.getElementById('btn-open-record-return');
+    if (recordReturnBtn) {
+        if (!isStaff) {
+            recordReturnBtn.style.opacity = '0.5';
+            recordReturnBtn.title = "Restricted: Requires Security Officer or Admin role";
+        } else {
+            recordReturnBtn.style.opacity = '1';
+            recordReturnBtn.title = "Record Item Return";
+        }
+    }
+
+    // Refresh claims table to reflect button permissions
+    loadClaims();
+}
+
+// ====================================================================
+// IMAGE UPLOAD & PRESET HANDLERS
+// ====================================================================
+function applyImagePreset(type, presetKey) {
+    const url = IMAGE_PRESETS[presetKey];
+    if (!url) return;
+    const input = document.getElementById(`${type}-image-url`);
+    if (input) {
+        input.value = url;
+        previewModalImage(type);
+    }
+}
+
+function previewModalImage(type) {
+    const input = document.getElementById(`${type}-image-url`);
+    const previewWrap = document.getElementById(`${type}-image-preview-wrap`);
+    const previewImg = document.getElementById(`${type}-image-preview`);
+    if (!input || !previewWrap || !previewImg) return;
+
+    const val = input.value.trim();
+    if (val) {
+        previewImg.src = val;
+        previewWrap.style.display = 'block';
+    } else {
+        previewWrap.style.display = 'none';
+    }
+}
+
+function clearModalImage(type) {
+    const input = document.getElementById(`${type}-image-url`);
+    const previewWrap = document.getElementById(`${type}-image-preview-wrap`);
+    const previewImg = document.getElementById(`${type}-image-preview`);
+    if (input) input.value = '';
+    if (previewImg) previewImg.src = '';
+    if (previewWrap) previewWrap.style.display = 'none';
+}
+
+async function handleFileUpload(event, type) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        showToast('Uploading image...', 'info');
+        const res = await fetch(`${API_BASE}/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (res.ok && data.url) {
+            const input = document.getElementById(`${type}-image-url`);
+            if (input) {
+                input.value = data.url;
+                previewModalImage(type);
+            }
+            showToast('Image uploaded successfully!', 'success');
+        } else {
+            showToast(data.error || 'Upload failed', 'error');
+        }
+    } catch (err) {
+        showToast(`Upload error: ${err.message}`, 'error');
+    }
+}
+
+// ====================================================================
 // NAVIGATION & TABS
 // ====================================================================
 function initNavigation() {
@@ -211,7 +334,9 @@ function switchTab(tabId) {
     if (tabId === 'dashboard') loadDashboardStats();
     if (tabId === 'lost-items') loadLostItems();
     if (tabId === 'found-items') loadFoundItems();
+    if (tabId === 'auto-match') loadAutoMatches();
     if (tabId === 'claims') { loadClaims(); loadReturns(); }
+    if (tabId === 'analytics') loadAnalytics();
     if (tabId === 'students') loadStudents();
     if (tabId === 'sql-lab') loadSchemaInfo();
 
@@ -224,8 +349,10 @@ function refreshAllData() {
     loadDashboardStats();
     loadLostItems();
     loadFoundItems();
+    loadAutoMatches();
     loadClaims();
     loadReturns();
+    loadAnalytics();
     loadStudents();
     loadSchemaInfo();
 }
@@ -318,6 +445,12 @@ async function loadLostItems() {
 
         container.innerHTML = items.map(item => `
             <div class="item-card">
+                ${item.image_url ? `
+                    <div class="item-card-image-wrap">
+                        <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.item_name)}" onerror="this.parentElement.style.display='none'">
+                        <div class="item-card-image-badge"><i data-lucide="camera"></i> Photo Verified</div>
+                    </div>
+                ` : ''}
                 <div class="item-card-header">
                     <div>
                         <span class="item-category-tag">${escapeHtml(item.category)}</span>
@@ -383,6 +516,12 @@ async function loadFoundItems() {
 
         container.innerHTML = items.map(item => `
             <div class="item-card">
+                ${item.image_url ? `
+                    <div class="item-card-image-wrap">
+                        <img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.item_name)}" onerror="this.parentElement.style.display='none'">
+                        <div class="item-card-image-badge"><i data-lucide="camera"></i> Custody Photo</div>
+                    </div>
+                ` : ''}
                 <div class="item-card-header">
                     <div>
                         <span class="item-category-tag">${escapeHtml(item.category)}</span>
@@ -448,6 +587,8 @@ async function loadClaims() {
             return;
         }
 
+        const isStaff = (currentUser.role === 'Admin' || currentUser.role === 'Security Officer');
+
         tbody.innerHTML = claims.map(c => `
             <tr>
                 <td><code>#CLM-${c.claim_id}</code></td>
@@ -469,10 +610,10 @@ async function loadClaims() {
                 <td>
                     ${c.claim_status === 'Pending' ? `
                         <div style="display:flex; gap:0.35rem;">
-                            <button class="btn btn-success-sm" onclick="updateClaimStatus(${c.claim_id}, 'Approved')" title="Approve Claim">
+                            <button class="btn btn-success-sm" onclick="${isStaff ? `updateClaimStatus(${c.claim_id}, 'Approved')` : `showToast('Claim approval restricted to Security Officer or Admin role', 'error')`}" title="Approve Claim" style="${!isStaff ? 'opacity:0.5;' : ''}">
                                 <i data-lucide="check"></i> Approve
                             </button>
-                            <button class="btn btn-danger-sm" onclick="updateClaimStatus(${c.claim_id}, 'Rejected')" title="Reject Claim">
+                            <button class="btn btn-danger-sm" onclick="${isStaff ? `updateClaimStatus(${c.claim_id}, 'Rejected')` : `showToast('Claim rejection restricted to Security Officer or Admin role', 'error')`}" title="Reject Claim" style="${!isStaff ? 'opacity:0.5;' : ''}">
                                 <i data-lucide="x"></i> Reject
                             </button>
                         </div>
@@ -504,6 +645,8 @@ async function updateClaimStatus(claimId, newStatus) {
             loadClaims();
             loadFoundItems();
             loadDashboardStats();
+            loadAutoMatches();
+            loadAnalytics();
         } else {
             showToast(data.error || 'Failed to update status', 'error');
         }
@@ -514,7 +657,7 @@ async function updateClaimStatus(claimId, newStatus) {
 
 async function loadReturns() {
     const tbody = document.getElementById('returns-table-body');
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state-text">Loading return records...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state-text">Loading return records...</td></tr>';
 
     try {
         const res = await fetch(`${API_BASE}/returns`);
@@ -523,7 +666,7 @@ async function loadReturns() {
         document.getElementById('returns-count-badge').innerText = `${returns.length} returns`;
 
         if (returns.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state-text">No return handovers recorded yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state-text">No return handovers recorded yet.</td></tr>';
             return;
         }
 
@@ -538,11 +681,356 @@ async function loadReturns() {
                 <td>${r.return_date}</td>
                 <td>${escapeHtml(r.verified_by)}</td>
                 <td><small>${escapeHtml(r.remarks || 'Handed over.')}</small></td>
+                <td>
+                    <button class="btn btn-outline-sm" onclick="openReturnReceipt(${r.return_id})" title="View and Print Official Handover Certificate">
+                        <i data-lucide="file-check-2"></i> Official Slip
+                    </button>
+                </td>
             </tr>
         `).join('');
+
+        updateIcons();
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="empty-state-text error">Error: ${err.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state-text error">Error: ${err.message}</td></tr>`;
     }
+}
+
+// ====================================================================
+// SMART AUTOMATED SIMILARITY MATCHING ENGINE
+// ====================================================================
+async function loadAutoMatches() {
+    const container = document.getElementById('matches-container');
+    const badge = document.getElementById('badge-match-count');
+    const threshold = parseInt(document.getElementById('match-threshold-filter')?.value || '40');
+    
+    if (container) {
+        container.innerHTML = '<div class="empty-state-text">Scanning catalog for similarity matches...</div>';
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/match-suggestions?threshold=${threshold}`);
+        const matches = await res.json();
+
+        if (badge) {
+            badge.innerText = matches.length;
+        }
+
+        if (!container) return;
+
+        if (matches.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state-text">
+                    <i data-lucide="search-check" style="width: 32px; height: 32px; margin-bottom: 0.5rem; opacity: 0.6;"></i><br>
+                    No pending items currently exceed the ${threshold}% match confidence threshold.
+                </div>
+            `;
+            updateIcons();
+            return;
+        }
+
+        container.innerHTML = matches.map(m => {
+            const scoreClass = m.score >= 75 ? 'match-score-high' : (m.score >= 60 ? 'match-score-med' : 'match-score-low');
+            const scoreLabel = m.score >= 75 ? 'High Confidence' : (m.score >= 60 ? 'Moderate Match' : 'Potential Match');
+
+            return `
+                <div class="match-card">
+                    <div class="match-card-header">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <span class="match-score-badge ${scoreClass}">
+                                <i data-lucide="sparkles"></i> ${m.score}% Match &bull; ${scoreLabel}
+                            </span>
+                            <span class="badge badge-info">${escapeHtml(m.lost_category)}</span>
+                        </div>
+                        <div class="match-action-bar">
+                            <button class="btn btn-primary-sm" onclick="initiateMatchClaim(${m.found_item_id}, '${escapeHtml(m.found_item_name)}', '${escapeHtml(m.found_category)}', '${m.lost_student_id}', '${escapeHtml(m.lost_description || '')}')">
+                                <i data-lucide="link-2"></i> Match &amp; File Claim
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="match-columns">
+                        <!-- Left: Lost Report -->
+                        <div class="match-col">
+                            <div class="match-col-tag lost">
+                                <i data-lucide="search-x"></i> Lost Item Complaint
+                            </div>
+                            <div class="match-item-row">
+                                ${m.lost_image_url ? `
+                                    <img src="${escapeHtml(m.lost_image_url)}" class="match-item-thumb" alt="Lost">
+                                ` : `
+                                    <div class="match-thumb-placeholder"><i data-lucide="help-circle"></i></div>
+                                `}
+                                <div class="match-item-info">
+                                    <h4>${escapeHtml(m.lost_item_name)}</h4>
+                                    <p>${escapeHtml(m.lost_description || 'No description.')}</p>
+                                    <small class="text-muted">
+                                        Lost at: <strong>${escapeHtml(m.lost_location)}</strong><br>
+                                        Date: ${m.lost_date} &bull; Student: ${escapeHtml(m.lost_student_name)} (${m.lost_student_id})
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Center Divider -->
+                        <div class="match-vs-divider">
+                            <div class="match-vs-circle">VS</div>
+                        </div>
+
+                        <!-- Right: Found Custody -->
+                        <div class="match-col">
+                            <div class="match-col-tag found">
+                                <i data-lucide="package-check"></i> Found In Custody
+                            </div>
+                            <div class="match-item-row">
+                                ${m.found_image_url ? `
+                                    <img src="${escapeHtml(m.found_image_url)}" class="match-item-thumb" alt="Found">
+                                ` : `
+                                    <div class="match-thumb-placeholder"><i data-lucide="package"></i></div>
+                                `}
+                                <div class="match-item-info">
+                                    <h4>${escapeHtml(m.found_item_name)}</h4>
+                                    <p>${escapeHtml(m.found_description || 'No description.')}</p>
+                                    <small class="text-muted">
+                                        Found at: <strong>${escapeHtml(m.found_location)}</strong><br>
+                                        Date: ${m.found_date} &bull; Custody: ${escapeHtml(m.found_storage_location)}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Matching Factors Breakdown -->
+                    <div class="match-factors-bar">
+                        <span class="text-muted" style="font-size: 0.72rem; margin-right: 0.25rem;">Correlation Factors:</span>
+                        <span class="match-factor-pill matched">
+                            <i data-lucide="check"></i> Category Match (+40%)
+                        </span>
+                        <span class="match-factor-pill ${m.factors.location_match ? 'matched' : ''}">
+                            <i data-lucide="${m.factors.location_match ? 'check' : 'minus'}"></i> Location Proximity (+${m.factors.location_score}%)
+                        </span>
+                        <span class="match-factor-pill ${m.factors.token_score > 0 ? 'matched' : ''}">
+                            <i data-lucide="${m.factors.token_score > 0 ? 'check' : 'minus'}"></i> Keyword Overlap (+${m.factors.token_score}%)
+                        </span>
+                        ${m.factors.common_tokens && m.factors.common_tokens.length > 0 ? `
+                            <span class="match-factor-pill matched" title="Shared tokens">
+                                Tokens: "${m.factors.common_tokens.join('", "')}"
+                            </span>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        updateIcons();
+    } catch (err) {
+        if (container) {
+            container.innerHTML = `<div class="empty-state-text error">Error scanning matches: ${err.message}</div>`;
+        }
+    }
+}
+
+function initiateMatchClaim(foundItemId, foundItemName, foundCategory, studentId, notes) {
+    document.getElementById('claim-item-id').value = foundItemId;
+    document.getElementById('claim-item-banner').innerHTML = `
+        <strong>Correlated Match:</strong> ${escapeHtml(foundItemName)} <span class="badge badge-info">${escapeHtml(foundCategory)}</span> (Item #${foundItemId})
+    `;
+    const studentSelect = document.getElementById('claim-student-id');
+    if (studentSelect) {
+        studentSelect.value = studentId;
+    }
+    const proofText = document.getElementById('claim-proof');
+    if (proofText) {
+        proofText.value = `Auto-matched via Lost Item complaint. Proof provided in complaint: ${notes}`;
+    }
+    openModal('modal-claim-item');
+}
+
+// ====================================================================
+// CAMPUS LOSS ANALYTICS & HOTSPOTS
+// ====================================================================
+async function loadAnalytics() {
+    try {
+        const res = await fetch(`${API_BASE}/analytics`);
+        const data = await res.json();
+
+        // Recovery Rate
+        const recRateEl = document.getElementById('analytics-recovery-rate');
+        if (recRateEl) recRateEl.innerText = `${data.recovery_rate}%`;
+
+        // Turnaround
+        const turnEl = document.getElementById('analytics-avg-turnaround');
+        if (turnEl) turnEl.innerText = `${data.avg_turnaround_days} days`;
+
+        // Total Incidents
+        const totEl = document.getElementById('analytics-total-incidents');
+        if (totEl) totEl.innerText = data.total_incidents;
+
+        // Top Hotspot
+        const topHotEl = document.getElementById('analytics-top-hotspot');
+        const topHotSub = document.getElementById('analytics-top-hotspot-sub');
+        if (data.hotspots && data.hotspots.length > 0) {
+            if (topHotEl) topHotEl.innerText = data.hotspots[0].location;
+            if (topHotSub) topHotSub.innerText = `${data.hotspots[0].incident_count} reports (${data.hotspots[0].lost_count} lost, ${data.hotspots[0].found_count} found)`;
+        } else {
+            if (topHotEl) topHotEl.innerText = 'N/A';
+        }
+
+        // Render Hotspots List with Progress Bars
+        const hotspotsContainer = document.getElementById('analytics-hotspots-list');
+        if (hotspotsContainer && data.hotspots) {
+            const maxIncidents = data.hotspots.length > 0 ? data.hotspots[0].incident_count : 1;
+            hotspotsContainer.innerHTML = data.hotspots.map((h, idx) => {
+                const pct = Math.round((h.incident_count / maxIncidents) * 100);
+                return `
+                    <div class="hotspot-item">
+                        <span class="hotspot-rank">#${idx + 1}</span>
+                        <div class="hotspot-info">
+                            <div class="hotspot-header">
+                                <span>${escapeHtml(h.location)}</span>
+                                <span class="hotspot-count">${h.incident_count} incidents</span>
+                            </div>
+                            <div class="hotspot-bar-wrap">
+                                <div class="hotspot-bar-fill" style="width: ${pct}%;"></div>
+                            </div>
+                            <small class="text-muted" style="font-size: 0.7rem;">${h.lost_count} lost &bull; ${h.found_count} found</small>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render Category Table
+        const catTbody = document.getElementById('analytics-category-tbody');
+        if (catTbody && data.category_metrics) {
+            catTbody.innerHTML = data.category_metrics.map(cm => `
+                <tr>
+                    <td><strong>${escapeHtml(cm.category)}</strong></td>
+                    <td>${cm.lost_count}</td>
+                    <td>${cm.found_count}</td>
+                    <td><span class="badge badge-info">${cm.returned_count}</span></td>
+                    <td>
+                        <strong style="color: ${cm.recovery_rate >= 50 ? '#34d399' : (cm.recovery_rate > 0 ? '#fbbf24' : '#94a3b8')};">
+                            ${cm.recovery_rate}%
+                        </strong>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        updateIcons();
+    } catch (err) {
+        console.error('Error loading analytics:', err);
+    }
+}
+
+// ====================================================================
+// OFFICIAL RETURN HANDOVER RECEIPT
+// ====================================================================
+async function openReturnReceipt(returnId) {
+    const modalContent = document.getElementById('receipt-modal-content');
+    if (!modalContent) return;
+
+    modalContent.innerHTML = '<div class="empty-state-text">Generating official receipt...</div>';
+    openModal('modal-receipt');
+
+    try {
+        const res = await fetch(`${API_BASE}/returns/${returnId}/receipt`);
+        const r = await res.json();
+
+        if (!res.ok || r.error) {
+            modalContent.innerHTML = `<div class="empty-state-text error">${r.error || 'Receipt not found'}</div>`;
+            return;
+        }
+
+        modalContent.innerHTML = `
+            <div class="receipt-sheet" id="printable-receipt">
+                <div class="receipt-header-banner">
+                    <div class="receipt-univ-title">
+                        <h2>VELLORE INSTITUTE OF TECHNOLOGY</h2>
+                        <p>Campus Security & Asset Recovery Registry &bull; Official Handover Certificate</p>
+                    </div>
+                    <div class="receipt-token-box">
+                        <span class="receipt-token-code">${escapeHtml(r.verification_code)}</span>
+                        <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Return Ref: #RET-${r.return_id}</div>
+                    </div>
+                </div>
+
+                <div class="receipt-meta-grid">
+                    <div class="receipt-meta-item">
+                        <strong>Handover Date & Time</strong>
+                        <span>${r.return_date} &bull; Recorded in Ledger</span>
+                    </div>
+                    <div class="receipt-meta-item">
+                        <strong>Authorizing Officer</strong>
+                        <span>${escapeHtml(r.verified_by)}</span>
+                    </div>
+                    <div class="receipt-meta-item">
+                        <strong>Receiving Student</strong>
+                        <span><strong>${escapeHtml(r.student_name)}</strong> (Reg: ${r.student_id})</span>
+                    </div>
+                    <div class="receipt-meta-item">
+                        <strong>Academic Department</strong>
+                        <span>${escapeHtml(r.department)} &bull; ${escapeHtml(r.email)}</span>
+                    </div>
+                </div>
+
+                <div class="receipt-item-details">
+                    <h4>Recovered Asset Information</h4>
+                    <table class="data-table" style="font-size: 0.8rem; margin-top: 0.5rem; background: white; color: #0f172a;">
+                        <thead>
+                            <tr style="background: #f1f5f9; color: #1e293b;">
+                                <th style="border: 1px solid #cbd5e1;">Item ID</th>
+                                <th style="border: 1px solid #cbd5e1;">Item Name</th>
+                                <th style="border: 1px solid #cbd5e1;">Category</th>
+                                <th style="border: 1px solid #cbd5e1;">Custody Storage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="border: 1px solid #cbd5e1;">#${r.item_id}</td>
+                                <td style="border: 1px solid #cbd5e1;"><strong>${escapeHtml(r.item_name)}</strong></td>
+                                <td style="border: 1px solid #cbd5e1;">${escapeHtml(r.category)}</td>
+                                <td style="border: 1px solid #cbd5e1;">${escapeHtml(r.storage_location || 'Campus Security Desk')}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="receipt-item-details">
+                    <h4>Handover Verification & Settlement Notes</h4>
+                    <p style="font-size: 0.8rem; color: #334155; background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 4px;">
+                        ${escapeHtml(r.remarks || 'Identity verified via Student ID Card and physical ownership evidence. Item handed over to rightful owner in intact condition.')}
+                    </p>
+                </div>
+
+                <div class="receipt-signatures-grid">
+                    <div class="receipt-sig-box">
+                        <div class="receipt-sig-line"></div>
+                        <span>Signature of Claimant / Student</span>
+                        <div style="font-size: 0.7rem; color: #64748b;">${escapeHtml(r.student_name)} (${r.student_id})</div>
+                    </div>
+                    <div class="receipt-sig-box">
+                        <div class="receipt-sig-line"></div>
+                        <span>Authorized Handover Authority</span>
+                        <div style="font-size: 0.7rem; color: #64748b;">${escapeHtml(r.verified_by)}</div>
+                    </div>
+                </div>
+
+                <div class="receipt-qr-payload">
+                    <strong>Cryptographic Verification Payload:</strong><br>
+                    ${r.qr_payload}
+                </div>
+            </div>
+        `;
+
+        updateIcons();
+    } catch (err) {
+        modalContent.innerHTML = `<div class="empty-state-text error">Error generating receipt: ${err.message}</div>`;
+    }
+}
+
+function printReceiptCertificate() {
+    window.print();
 }
 
 // ====================================================================
@@ -795,7 +1283,8 @@ async function handleReportLost(e) {
         category: document.getElementById('lost-category').value,
         location: document.getElementById('lost-location').value,
         date_lost: document.getElementById('lost-date').value,
-        description: document.getElementById('lost-description').value
+        description: document.getElementById('lost-description').value,
+        image_url: document.getElementById('lost-image-url').value.trim() || null
     };
 
     try {
@@ -809,8 +1298,11 @@ async function handleReportLost(e) {
             showToast('Lost item reported successfully!', 'success');
             closeModal('modal-report-lost');
             document.getElementById('form-report-lost').reset();
+            clearModalImage('lost');
             loadLostItems();
             loadDashboardStats();
+            loadAutoMatches();
+            loadAnalytics();
             loadSchemaInfo();
         } else {
             showToast(data.error || 'Failed to report item', 'error');
@@ -830,7 +1322,8 @@ async function handleReportFound(e) {
         location: document.getElementById('found-location').value,
         date_found: document.getElementById('found-date').value,
         storage_location: document.getElementById('found-storage-location').value,
-        description: document.getElementById('found-description').value
+        description: document.getElementById('found-description').value,
+        image_url: document.getElementById('found-image-url').value.trim() || null
     };
 
     try {
@@ -844,8 +1337,11 @@ async function handleReportFound(e) {
             showToast('Found item reported successfully!', 'success');
             closeModal('modal-report-found');
             document.getElementById('form-report-found').reset();
+            clearModalImage('found');
             loadFoundItems();
             loadDashboardStats();
+            loadAutoMatches();
+            loadAnalytics();
             loadSchemaInfo();
             loadReturnItemsDropdown();
         } else {
@@ -879,6 +1375,8 @@ async function handleSubmitClaim(e) {
             document.getElementById('form-claim-item').reset();
             loadClaims();
             loadDashboardStats();
+            loadAutoMatches();
+            loadAnalytics();
             loadSchemaInfo();
         } else {
             showToast(data.error || 'Failed to submit claim', 'error');
@@ -914,6 +1412,8 @@ async function handleProcessReturn(e) {
             loadLostItems();
             loadFoundItems();
             loadClaims();
+            loadAutoMatches();
+            loadAnalytics();
             loadDashboardStats();
             loadSchemaInfo();
         } else {
